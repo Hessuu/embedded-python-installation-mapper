@@ -4,8 +4,15 @@ import pkgutil
 import sys
 from pathlib import Path
 
+own_dir = os.path.dirname(__file__)
+
+sys.path.append(own_dir)
+
 from pythonmodule import PythonModule
 from modulecollection import ModuleCollection
+
+sys.path.remove(own_dir)
+
 
 # For Python 3.10+
 STD_LIB_MODULES = sys.stdlib_module_names
@@ -13,72 +20,98 @@ STD_LIB_MODULES = sys.stdlib_module_names
 class DependencyFinder(ast.NodeVisitor):
     """
     An AST visitor that finds all imported modules in a Python file.
+    It uses the module's own dotted name to resolve relative imports.
     """
     def __init__(self, source_module: PythonModule):
-        source_path = Path(source_module.path)
-        
-        self.source_path = source_path
         self.imports = set()
-        self.source_dir = source_path.parent
+        self.source_path = Path(source_module.path)
+        self.module_dotted_name = source_module.full_name
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
-            self.imports.add(alias.name.split('.')[0])
-        self.generic_visit(node)
+            self.imports.add(alias.name)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        # If the import is relative (e.g., `from . import utils`),
-        # we resolve it relative to the current file's package.
-        if node.level > 0:
-            # from .foo import bar -> level 1
-            # from ..foo import bar -> level 2
-            # Resolve the base path for the relative import
-            base = self.source_dir
-            for _ in range(node.level - 1):
-                base = base.parent
-            
-            if node.module:
-                # e.g., from .utils import helpers
-                # module_name becomes `your_package.utils`
-                module_name = ".".join(base.parts[-node.level:]) + "." + node.module
-            else:
-                # e.g., from . import utils
-                module_name = ".".join(base.parts[-node.level:])
-            
-            # We only care about the top-level package name
-            self.imports.add(module_name.split('.')[0])
-        elif node.module:
-            # Absolute import (e.g., `from my_package.utils import helpers`)
-            # We just need the top-level package: `my_package`
-            self.imports.add(node.module.split('.')[0])
-        self.generic_visit(node)
+        if node.level > 0:  # This is a relative import
+            if not self.module_dotted_name:
+                return  # Cannot resolve relative import without knowing our own package
 
+            is_init_file = self.source_path.name == '__init__.py'
+            
+            # If current file is a package's __init__.py, its name is the package name.
+            # Otherwise, its name is package.module, and we need the package part.
+            package_parts = self.module_dotted_name.split('.')
+            if not is_init_file:
+                package_parts = package_parts[:-1]
+            
+            # For `from .. import foo`, level is 2. We go up level-1 directories.
+            if node.level > 1:
+                package_parts = package_parts[:-(node.level - 1)]
+
+            module_parts = node.module.split('.') if node.module else []
+            
+            full_module_path = '.'.join(package_parts + module_parts)
+            if full_module_path:
+                self.imports.add(full_module_path)
+        
+        elif node.module:  # This is an absolute import
+            self.imports.add(node.module)
 
 def find_module_path(module_name: str, search_paths: list) -> Path | None:
     """
     Tries to find the file path for a given module name.
+    Handles dotted module names like 'package.module'.
     """
-    for path in search_paths:
-        # Check for package (directory with __init__.py)
-        potential_path = Path(path) / module_name / "__init__.py"
-        if potential_path.exists():
-            return potential_path
+    module_path_parts = module_name.split('.')
+    
+    for search_path in search_paths:
+        base_path = Path(search_path)
         
-        # Check for .py file
-        potential_path = Path(path) / f"{module_name}.py"
+        # Check for a package directory: .../package/module/__init__.py
+        potential_path = base_path.joinpath(*module_path_parts, '__init__.py')
         if potential_path.exists():
             return potential_path
             
-    # Fallback using pkgutil for more complex cases (e.g., C extensions)
+        # Check for a .py file: .../package/module.py
+        potential_path = base_path.joinpath(*module_path_parts[:-1], f'{module_path_parts[-1]}.py')
+        if potential_path.exists():
+            return potential_path
+            
     try:
-        finder = pkgutil.get_loader(module_name)
-        if finder and hasattr(finder, 'get_filename'):
-            return Path(finder.get_filename(module_name))
-    except (ImportError, AttributeError):
+        # Fallback using pkgutil for more complex cases (e.g., C extensions)
+        # This part should handle dotted names correctly already.
+        spec = pkgutil.find_loader(module_name)
+        if spec and hasattr(spec, 'path') and spec.path:
+             return Path(spec.path)
+    except (ImportError, AttributeError, ModuleNotFoundError):
         pass
         
     return None
 
+def get_module_name_from_path(path: Path, search_paths: list[str]) -> str | None:
+    """
+    Converts a file path to a Python module name.
+    e.g., /usr/lib/python3.12/site-packages/yt_dlp/cookies.py -> yt_dlp.cookies
+    """
+    resolved_path = path.resolve()
+    # Sort search paths by length, longest first, to handle nested paths correctly.
+    sorted_search_paths = sorted([p for p in search_paths if p], key=len, reverse=True)
+
+    for sp_str in sorted_search_paths:
+        sp = Path(sp_str).resolve()
+        # Check if the search path is a parent of the module path
+        if sp in resolved_path.parents:
+            relative_path = resolved_path.relative_to(sp)
+            
+            if relative_path.name == '__init__.py':
+                # /path/to/pkg/__init__.py -> pkg
+                module_parts = relative_path.parent.parts
+            else:
+                # /path/to/pkg/mod.py -> pkg.mod
+                module_parts = relative_path.with_suffix('').parts
+            
+            return '.'.join(module_parts)
+    return None
 
 def find_all_dependencies(entry_points: list[str], search_paths: list[str]) -> set[str]:
     """
@@ -103,9 +136,13 @@ def find_all_dependencies(entry_points: list[str], search_paths: list[str]) -> s
         else:
             print(f"Warning: Entry point not found: {point}")
 
+    print(f"starting modules_to_scan: {modules_to_scan}")
+
     while modules_to_scan:
         current_module = modules_to_scan.popitem()
         print(current_module)
+        if current_module.first_name == "pdb":
+            continue
         if current_module.__hash__() not in scanned_files:
             scanned_files.add(current_module)
             
@@ -175,6 +212,7 @@ if __name__ == '__main__':
     #    Use absolute paths for reliability.
     APP_ENTRY_POINTS = [
         "/usr/bin/archivebox",
+        "/usr/bin/yt-dlp",
     ]
 
     # 2. Define the paths where Python looks for modules.

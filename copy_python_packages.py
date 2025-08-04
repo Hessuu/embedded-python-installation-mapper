@@ -21,6 +21,8 @@ elif destination_suffix_arg == "pyc":
     destination_suffix = settings.YOCTO_PYTHON_PACKAGE_COPY_DESTINATION_SUFFIX_PYC
 elif destination_suffix_arg == "pyc-opt":
     destination_suffix = settings.YOCTO_PYTHON_PACKAGE_COPY_DESTINATION_SUFFIX_PYC_OPT
+elif destination_suffix_arg == "pyc-opt-os":
+    destination_suffix = settings.YOCTO_PYTHON_PACKAGE_COPY_DESTINATION_SUFFIX_PYC_OPT_OS
 else:
     print(f"ERROR: Invalid destination suffix: {destination_suffix_arg}")
     sys.exit(-1)
