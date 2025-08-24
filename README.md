@@ -1,1 +1,1 @@
-# yocto-python-package-mapper
+# embedded-python-installation-mapper
