@@ -1,5 +1,7 @@
 import settings
 
+from common.util.logging import print
+
 from .local_step import LocalStep
 from ._step_5_map_target_dependencies import MapTargetDependencies
 

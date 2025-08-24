@@ -1,7 +1,10 @@
-import settings
 from fabric import Connection
 from pathlib import Path
 from scp import SCPClient
+
+import settings
+from common.util.logging import print
+
 
 ## SETUP ##
 def __get_fabric_connection():

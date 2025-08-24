@@ -48,6 +48,8 @@ class YoctoPythonPackageCollection(collections.UserDict):
 
     def populate(self, yocto_target_work_dirs: [Path]):
         for work_dir in yocto_target_work_dirs:
+            assert(work_dir.exists())
+
             for recipe_dir in work_dir.glob("*"):
                 for package_dir in recipe_dir.glob("*/packages-split/*"):
                     if is_python_package(package_dir):

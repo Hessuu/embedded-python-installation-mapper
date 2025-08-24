@@ -4,6 +4,7 @@ from pathlib import Path
 import settings
 from common.session import Session
 from common.util.class_property import classproperty
+from common.util.logging import print
 
 def _camel_case_to_snake_case(camel_str: str) -> str:
     snake_str = [camel_str[0].lower()]
@@ -31,19 +32,19 @@ class LocalStep(object):
 
 ## PROTECTED ##
     @classproperty
-    def _session_out_name(cls) -> str:
+    def _own_session_name(cls) -> str:
         return f"{cls.__name__}.session"
 
     @classproperty
-    def _local_session_in_path(cls) -> Path:
+    def _local_previous_step_session_path(cls) -> Path:
         if cls.previous_step:
-            return settings.LOCAL_SESSIONS_DIR / cls.previous_step._session_out_name
+            return settings.LOCAL_SESSIONS_DIR / cls.previous_step._own_session_name
         else:
             return None
 
     @classproperty
-    def _local_session_out_path(cls) -> Path:
-        return settings.LOCAL_SESSIONS_DIR / cls._session_out_name
+    def _local_own_session_path(cls) -> Path:
+        return settings.LOCAL_SESSIONS_DIR / cls._own_session_name
 
     _session = None
 
@@ -54,9 +55,9 @@ class LocalStep(object):
 ## PUBLIC ##
     def run(self, we_are_remote=False):
         if self.previous_step:
-            self.__load_session_in()
+            self.__load_previous_step_session()
         self._run_locally()
-        self.__write_session_out()
+        self.__write_own_session()
 
     def print_result(self):
         print(f"Nothing to print for task: {self.cli_name}")
@@ -64,36 +65,36 @@ class LocalStep(object):
 ## PROTECTED ##
     def _run_locally(self):
         pass
+    
+    def _load_session(self, session_path: Path):
+        if not session_path.exists():
+            raise Exception(f"Session file missing for {__name__} step: {session_path}")
+
+        with open(session_path, "rb") as session_file:
+            self._session = Unpickler(session_file).load()
 
 ## PRIVATE ##
-    def __load_session_in(self):
-        print(f"## Reading session file {self._local_session_in_path} ##")
+    def __load_previous_step_session(self):
+        print(f"## Reading session file {self._local_previous_step_session_path} ##")
 
-        if not self._local_session_in_path.exists():
-            raise Exception(f"Input session file missing for {__name__} step: {self._local_session_in_path}")
+        self._load_session(self._local_previous_step_session_path)
 
-        with open(self._local_session_in_path, "rb") as session_in_file:
-            self._session = Unpickler(session_in_file).load()
-
-        #    session_in_data = session_in_file.read()
-        #    self._session = pickle.loads(session_in_data)
-
-        print(f"## Read session file {self._local_session_in_path} ##")
+        print(f"## Read session file {self._local_previous_step_session_path} ##")
         print()
 
-    def __write_session_out(self):
-        print(f"## Writing session file {self._local_session_out_path} ##")
+    def __write_own_session(self):
+        print(f"## Writing session file {self._local_own_session_path} ##")
         
         if not settings.LOCAL_SESSIONS_DIR.exists():
             settings.LOCAL_SESSIONS_DIR.mkdir()
 
-        self._local_session_out_path.unlink(missing_ok=True)
+        self._local_own_session_path.unlink(missing_ok=True)
 
         #session_out_data = pickle.dumps(self._session)
-        with open(self._local_session_out_path, "wb") as session_out_file:
+        with open(self._local_own_session_path, "wb") as session_out_file:
             Pickler(session_out_file).dump(self._session)
         #    session_out_file.write(session_out_data)
 
 
-        print(f"## Wrote session file {self._local_session_out_path} ##")
+        print(f"## Wrote session file {self._local_own_session_path} ##")
         print()

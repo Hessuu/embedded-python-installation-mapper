@@ -1,20 +1,31 @@
 import settings
 
+from common.util.logging import print
+
 from .remote_step import RemoteStep
 from ._step_4_map_target_modules import MapTargetModules
 
 class MapTargetDependencies(RemoteStep):
 
     previous_step = MapTargetModules
-
+    
     def _run_locally(self):
-        import remote.python_module_mapper
+        from remote import python_module_mapper
 
         print(f"## Mapping target Python dependencies... ##")
 
-        python_module_mapper.find_all_available_modules(self._session.target_modules, settings.ENTRY_POINTS_ON_TARGET, settings.ADDITIONAL_PYTHON_SEARCH_PATHS_ON_TARGET)
-
-        self._session.target_modules.print_all("available_modules")
+        python_module_mapper.find_all_dependencies(
+            self._session.target_modules,
+            settings.ENTRY_POINTS_ON_TARGET,
+            settings.REMOTE_ROOT_PATH
+            )
 
         print(f"## Mapped target Python dependencies. ##")
         print()
+
+    def print_result(self):
+        required_modules = self._session.target_modules.get_imported_modules()
+        required_modules.print_all("required_modules")
+
+        unneeded_modules = self._session.target_modules.get_unimported_modules()
+        unneeded_modules.print_all("unneeded_modules")

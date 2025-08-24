@@ -6,6 +6,8 @@ import pkgutil
 from pathlib import Path
 from queue import LifoQueue
 
+from common.util import color_string
+from common.util.logging import print, set_tag_and_color_print_func
 from common.step import steps
 from common.step.local_step import LocalStep
 from common.session import Session
@@ -25,6 +27,11 @@ parser.add_argument("--remote", action='store_true', help=argparse.SUPPRESS)
 
 
 args = parser.parse_args()
+
+if args.remote:
+    set_tag_and_color_print_func("REM", color_string.yellow)
+else:
+    set_tag_and_color_print_func("LOC", color_string.green)
 
 print(args)
 
@@ -47,6 +54,7 @@ else:
 
 # Run step queue
 current_step = None
+final_step_inst = None
 while not step_queue.empty():
     current_step = step_queue.get()
     current_step_inst = current_step()
@@ -57,5 +65,8 @@ while not step_queue.empty():
 
     print(f"#### Step Done: {current_step_inst.cli_name} ####")
     print()
+    
+    final_step_inst = current_step_inst
 
-    current_step_inst.print_result()
+if not args.remote:
+    final_step_inst.print_result()

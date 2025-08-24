@@ -1,3 +1,4 @@
+from common.util.logging import print
 
 
 def print_percentage(current, max):

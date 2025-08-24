@@ -1,10 +1,8 @@
 import settings
 from common.session import Session
+from common.util.logging import print
 
 from .local_step import LocalStep
-
-import common.session
-print(f"Creator session: {common.session.__file__}")
 
 class MapYoctoPackages(LocalStep):
 

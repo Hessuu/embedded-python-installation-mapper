@@ -1,13 +1,10 @@
 import settings
 
 from common.session import Session
+from common.util.logging import print
 
 from .remote_step import RemoteStep
 from ._step_1_map_yocto_packages import MapYoctoPackages
-
-import common.session
-print(f"User session: {common.session.__file__}")
-
 
 class AddTargetYoctoPackages(RemoteStep):
 

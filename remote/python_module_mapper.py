@@ -1,33 +1,45 @@
 import json
 import math
+import shutil
 import sys
 from pathlib import Path
 
+from common.python_module_collection import PythonModuleCollection
 from common.python_file import is_python_file
 from remote.python_module import PythonModule, get_module_full_name_from_path
 
 # For Python 3.10+
 STD_LIB_MODULES = sys.stdlib_module_names
 
-def construct_search_paths(additional_search_paths: list[str]):
+def construct_search_paths(
+        additional_search_paths: list[str],
+        own_app_root_dir: Path
+        ):
+
     search_paths = additional_search_paths
 
     # Add system paths for broader search, but prioritize custom paths.
     search_paths.extend(sys.path)
 
     # Remove our own directory from paths to prevent the scanner from being included.
-    own_dir_path = Path(__file__).parent.resolve()
+    own_dir_path = own_app_root_dir.resolve()
     own_dir_path_str = str(own_dir_path)
-    search_paths.remove(own_dir_path_str)
+    if own_dir_path_str in search_paths:
+        search_paths.remove(own_dir_path_str)
 
     print(f"Python search paths: {search_paths}")
 
     return search_paths
 
 
-def find_all_available_modules(all_modules, entry_points: list[str], additional_search_paths: list[str]):
+def find_all_available_modules(
+        all_modules: PythonModuleCollection,
+        entry_points: list[str],
+        additional_search_paths: list[str],
+        own_app_root_dir: Path
+        ):
 
-    search_paths = construct_search_paths(additional_search_paths)
+    search_paths = construct_search_paths(additional_search_paths, own_app_root_dir)
 
     all_modules.clear()
 
@@ -56,12 +68,21 @@ def find_all_available_modules(all_modules, entry_points: list[str], additional_
                     all_modules[object_path] = python_module
 
 
-def find_all_dependencies(all_modules, entry_points: list[str]):
+def find_all_dependencies(
+        all_modules: PythonModuleCollection,
+        entry_points: list[str],
+        own_app_root_dir
+        ):
+
     from pydeps import py2depgraph
     from pydeps.configs import Config
     from pydeps.target import Target
+    
+    # Own direcory needs to be removed from Python path for the duration of the scan
+    if str(own_app_root_dir) in sys.path:
+        sys.path.remove(str(own_app_root_dir))
 
-    for entry_point in entry_points:
+    for entry_point in entry_points:        
         '''
         We need to simulate running "python <entry_point>.py", so path needs to be modified
         similar to how python would do it.

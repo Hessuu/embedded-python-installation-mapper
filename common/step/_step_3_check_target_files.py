@@ -1,5 +1,7 @@
 import settings
 
+from common.util.logging import print
+
 from .remote_step import RemoteStep
 from ._step_2_add_target_yocto_packages import AddTargetYoctoPackages
 
@@ -16,3 +18,6 @@ class CheckTargetFiles(RemoteStep):
 
         print(f"## Checked Python files on target. ##")
         print()
+
+    def print_result(self):
+        print(self._session.yocto_packages)

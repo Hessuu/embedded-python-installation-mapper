@@ -1,4 +1,6 @@
 
+from common.util.logging import print
+
 from ._step_1_map_yocto_packages import MapYoctoPackages
 from ._step_2_add_target_yocto_packages import AddTargetYoctoPackages
 from ._step_3_check_target_files import CheckTargetFiles
