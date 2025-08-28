@@ -3,12 +3,15 @@ import settings
 from common.session import Session
 from common.util.logging import print
 
-from .remote_step import RemoteStep
-from ._step_1_map_yocto_packages import MapYoctoPackages
+from common.task.base.remote_task import RemoteTask
+from common.task.mapper.map_yocto_packages import MapYoctoPackages
 
-class AddTargetYoctoPackages(RemoteStep):
+############
+## TASK 2 ##
+############
+class AddTargetYoctoPackages(RemoteTask):
 
-    previous_step = MapYoctoPackages
+    previous_task = MapYoctoPackages
 
     def _run_locally(self):
         #import yocto_packages

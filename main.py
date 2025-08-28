@@ -6,21 +6,21 @@ import pkgutil
 from pathlib import Path
 from queue import LifoQueue
 
+from common import task
 from common.util import color_string
 from common.util.logging import print, set_tag_and_color_print_func
-from common.step import steps
-from common.step.local_step import LocalStep
+from common.task.base.local_task import LocalTask
 from common.session import Session
 
-step_choices = steps.all
-step_choices_with_all = step_choices.copy()
-step_choices_with_all["all"] = "all"
+task_choices = task.get_all()
+task_choices_with_all = task_choices.copy()
+task_choices_with_all["all"] = "all"
 
 parser = argparse.ArgumentParser()
 
 group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-r", "--run", choices=step_choices_with_all.keys())
-group.add_argument("-o", "--run-only", choices=step_choices.keys())
+group.add_argument("-r", "--run", choices=task_choices_with_all.keys())
+group.add_argument("-o", "--run-only", choices=task_choices.keys())
 
 parser.add_argument("-f", "--force-rerun-dependencies")
 parser.add_argument("--remote", action='store_true', help=argparse.SUPPRESS)
@@ -35,38 +35,38 @@ else:
 
 print(args)
 
-step_queue = LifoQueue()
+task_queue = LifoQueue()
 
-# Construct a step queue based on arguments
+# Construct a task queue based on arguments
 if args.run:
     if args.run == "all":
         pass
     else:
-        target_step = step_choices[args.run]
-        step_queue = steps.populate_step_queue_for_target_step(step_queue, target_step)
+        target_task = task_choices[args.run]
+        task_queue = task.populate_task_queue_for_target_task(task_queue, target_task)
 
 elif args.run_only:
-    target_step = step_choices[args.run_only]
-    step_queue.put(target_step)
+    target_task = task_choices[args.run_only]
+    task_queue.put(target_task)
 
 else:
     raise Exception("bad args")
 
-# Run step queue
-current_step = None
-final_step_inst = None
-while not step_queue.empty():
-    current_step = step_queue.get()
-    current_step_inst = current_step()
+# Run task queue
+current_task = None
+final_task_inst = None
+while not task_queue.empty():
+    current_task = task_queue.get()
+    current_task_inst = current_task()
 
-    print(f"#### Next step: {current_step_inst.cli_name} ####")
+    print(f"#### Next task: {current_task_inst.cli_name} ####")
 
-    current_step_inst.run(args.remote)
+    current_task_inst.run(args.remote)
 
-    print(f"#### Step Done: {current_step_inst.cli_name} ####")
+    print(f"#### Task Done: {current_task_inst.cli_name} ####")
     print()
     
-    final_step_inst = current_step_inst
+    final_task_inst = current_task_inst
 
 if not args.remote:
-    final_step_inst.print_result()
+    final_task_inst.print_result()

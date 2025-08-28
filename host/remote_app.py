@@ -15,7 +15,7 @@ app_components = [
     "remote",
 ]
 
-requirements_dir = "requirements"
+requirements_dir = f"requirements/{settings.TARGET_PYTHON_VERSION}"
 
 def _remove_old(remote_root_path):
     run_command(f"rm -rf {remote_root_path}")

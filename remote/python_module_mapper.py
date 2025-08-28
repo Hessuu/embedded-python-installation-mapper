@@ -100,7 +100,7 @@ def find_all_dependencies(
         else:
             print("In path!")
 
-        input = Target(entry_point)
+        input = Target(entry_point, use_calling_fname=True)
 
         print(f"Processing dependencies for {entry_point}")
         config = Config(
@@ -129,18 +129,21 @@ def find_all_dependencies(
 
         if path_was_added:
             sys.path.remove(entry_point_dir)
-            print(f"path after processing: {sys.path}")
+            print(f"Path after processing: {sys.path}")
 
         for dep_entry in dep_graph_dict.values():
-            #print(f"{dep_entry}")
+            #print(f"{dep_entry['name']} , {dep_entry['path']}")
+            #print(f"    {dep_entry}")
             #print()
 
             if dep_entry["path"]:
                 dep_entry_path = Path(dep_entry["path"])
                 #print(all_modules[dep_entry_path])
                 all_modules[dep_entry_path].importers.update(dep_entry["imported_by"])
+                    
                 #print(all_modules[dep_entry_path])
             else:
-                print(f"No path for: {dep_entry}")
+                #print(f"No path for: {dep_entry}")
+                pass
 
     return

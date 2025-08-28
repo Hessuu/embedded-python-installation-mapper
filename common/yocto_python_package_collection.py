@@ -7,6 +7,7 @@ from pathlib import Path
 
 import settings
 from common.python_file import is_python_file
+from common.python_module_collection import PythonModuleCollection
 from common.yocto_package import YoctoPackage, FileStatus
 
 glob_once_wins = 0
@@ -72,6 +73,35 @@ class YoctoPythonPackageCollection(collections.UserDict):
                     package.files[file.path].status = FileStatus.NOT_FOUND
                 #else:
                     #print(f"TRUE: Package: {package.name} , File exists: {file.path}")
+
+    def combine_with_target_module_data(self, target_modules: PythonModuleCollection):
+        for target_module in target_modules.values():
+            module_found_from_packages = False
+            #TODO: remove this debug string stuff, it's slow
+            #debug_str = ""
+
+            for yocto_package in self.values():
+                #debug_str += yocto_package.name + "\n"
+                for yocto_file in yocto_package.files.values():
+                    #debug_str += f"    {yocto_file.path}\n"
+                    if target_module.path == yocto_file.path:
+                        module_found_from_packages = True
+                        
+                        yocto_file.target_module = target_module
+
+                        if len(target_modules[target_module.path].importers) > 0:
+                            yocto_file.status = FileStatus.REQUIRED
+                        else:
+                            yocto_file.status = FileStatus.NOT_REQUIRED
+
+            if not module_found_from_packages:
+                if target_module.is_built_in:
+                    continue
+                if target_module.is_entry_point:
+                    print(f"Entry point not found from packages, ignoring: {target_module.path}")
+                    continue
+
+                raise Exception(f"Module not found from packages: {target_module}")
 
     def __str__(self):
         string = ""

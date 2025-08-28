@@ -2,12 +2,15 @@ import settings
 
 from common.util.logging import print
 
-from .remote_step import RemoteStep
-from ._step_2_add_target_yocto_packages import AddTargetYoctoPackages
+from common.task.base.remote_task import RemoteTask
+from common.task.mapper.add_target_yocto_packages import AddTargetYoctoPackages
 
-class CheckTargetFiles(RemoteStep):
+############
+## TASK 3 ##
+############
+class CheckTargetFiles(RemoteTask):
 
-    previous_step = AddTargetYoctoPackages
+    previous_task = AddTargetYoctoPackages
 
     def _run_locally(self):
         #import yocto_packages

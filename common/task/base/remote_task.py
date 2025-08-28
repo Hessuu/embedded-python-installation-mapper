@@ -6,16 +6,16 @@ from common.session import Session
 from common.util.class_property import classproperty
 from common.util.logging import print
 
-from .local_step import LocalStep
+from .local_task import LocalTask
 
-class RemoteStep(LocalStep):
+class RemoteTask(LocalTask):
 #### PROPERTIES & VARIABLES ####
 
 ## PROTECTED ##
     @classproperty
-    def _remote_previous_step_session_path(cls) -> Path:
-        if cls.previous_step:
-            return settings.REMOTE_SESSIONS_DIR / cls.previous_step._own_session_name
+    def _remote_previous_task_session_path(cls) -> Path:
+        if cls.previous_task:
+            return settings.REMOTE_SESSIONS_DIR / cls.previous_task._own_session_name
         else:
             return None
 
@@ -35,7 +35,7 @@ class RemoteStep(LocalStep):
             from host import remote_app
             remote_app.sync(settings.LOCAL_ROOT_PATH, settings.REMOTE_ROOT_PATH)
 
-            self.__sync_remote_previous_step_session()
+            self.__sync_remote_previous_task_session()
             self.__run_remotely()
             self.__sync_remote_own_session()
             self.__load_own_session() # Load for printing
@@ -46,14 +46,14 @@ class RemoteStep(LocalStep):
 
         run_command(f"cd {settings.REMOTE_ROOT_PATH} && python3 -m main --run-only {self.cli_name} --remote")
 
-    def __sync_remote_previous_step_session(self):
+    def __sync_remote_previous_task_session(self):
         from host.remote_operations import put_file, run_command
         
-        run_command(f"mkdir -p {self._remote_previous_step_session_path.parent}")
-        run_command(f"rm -f {self._remote_previous_step_session_path}")
+        run_command(f"mkdir -p {self._remote_previous_task_session_path.parent}")
+        run_command(f"rm -f {self._remote_previous_task_session_path}")
 
-        print(f"Sending local file {self._local_previous_step_session_path} to {self._remote_previous_step_session_path}")
-        put_file(self._local_previous_step_session_path, self._remote_previous_step_session_path)
+        print(f"Sending local file {self._local_previous_task_session_path} to {self._remote_previous_task_session_path}")
+        put_file(self._local_previous_task_session_path, self._remote_previous_task_session_path)
 
     def __sync_remote_own_session(self):
         from host.remote_operations import get_file

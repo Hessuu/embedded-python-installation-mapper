@@ -18,13 +18,13 @@ def _camel_case_to_snake_case(camel_str: str) -> str:
 
     return "".join(snake_str)
 
-class LocalStep(object):
+class LocalTask(object):
 ############################
 ## PROPERTIES & VARIABLES ##
 ############################
 
 ## PUBLIC ##
-    previous_step = None
+    previous_task = None
     
     @classproperty
     def cli_name(cls) -> str:
@@ -36,9 +36,9 @@ class LocalStep(object):
         return f"{cls.__name__}.session"
 
     @classproperty
-    def _local_previous_step_session_path(cls) -> Path:
-        if cls.previous_step:
-            return settings.LOCAL_SESSIONS_DIR / cls.previous_step._own_session_name
+    def _local_previous_task_session_path(cls) -> Path:
+        if cls.previous_task:
+            return settings.LOCAL_SESSIONS_DIR / cls.previous_task._own_session_name
         else:
             return None
 
@@ -54,8 +54,8 @@ class LocalStep(object):
 
 ## PUBLIC ##
     def run(self, we_are_remote=False):
-        if self.previous_step:
-            self.__load_previous_step_session()
+        if self.previous_task:
+            self.__load_previous_task_session()
         self._run_locally()
         self.__write_own_session()
 
@@ -68,18 +68,18 @@ class LocalStep(object):
     
     def _load_session(self, session_path: Path):
         if not session_path.exists():
-            raise Exception(f"Session file missing for {__name__} step: {session_path}")
+            raise Exception(f"Session file missing for {__name__} task: {session_path}")
 
         with open(session_path, "rb") as session_file:
             self._session = Unpickler(session_file).load()
 
 ## PRIVATE ##
-    def __load_previous_step_session(self):
-        print(f"## Reading session file {self._local_previous_step_session_path} ##")
+    def __load_previous_task_session(self):
+        print(f"## Reading session file {self._local_previous_task_session_path} ##")
 
-        self._load_session(self._local_previous_step_session_path)
+        self._load_session(self._local_previous_task_session_path)
 
-        print(f"## Read session file {self._local_previous_step_session_path} ##")
+        print(f"## Read session file {self._local_previous_task_session_path} ##")
         print()
 
     def __write_own_session(self):

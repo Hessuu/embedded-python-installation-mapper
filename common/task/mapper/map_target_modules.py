@@ -4,13 +4,15 @@ from pathlib import Path
 import settings
 from common.util.logging import print
 
-from .remote_step import RemoteStep
-from ._step_3_check_target_files import CheckTargetFiles
+from common.task.base.remote_task import RemoteTask
+from common.task.mapper.check_target_files import CheckTargetFiles
 
+############
+## TASK 4 ##
+############
+class MapTargetModules(RemoteTask):
 
-class MapTargetModules(RemoteStep):
-
-    previous_step = CheckTargetFiles
+    previous_task = CheckTargetFiles
 
     def _run_locally(self):
         from remote import python_module_mapper 

@@ -2,11 +2,14 @@ import settings
 from common.session import Session
 from common.util.logging import print
 
-from .local_step import LocalStep
+from common.task.base.local_task import LocalTask
 
-class MapYoctoPackages(LocalStep):
+############
+## TASK 1 ##
+############
+class MapYoctoPackages(LocalTask):
 
-    previous_step = None
+    previous_task = None
 
     def _run_locally(self):
         print(f"## Mapping Yocto Python packages... ##")

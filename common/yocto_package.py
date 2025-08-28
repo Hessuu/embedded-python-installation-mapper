@@ -25,6 +25,11 @@ class YoctoPackageFile(object):
     def __init__(self, path: Path, theoretical_size: int):
         self.path = path
         self.theoretical_size = theoretical_size
+        # Real size comes from self.target_module
+
+        #TODO: use more
+        # The corresponding module(i.e., file) found on target
+        self.target_module = None
 
         if path.suffix in settings.NOT_HANDLED_FILE_TYPES:
             self.status = FileStatus.NOT_HANDLED
@@ -47,7 +52,16 @@ class YoctoPackageFile(object):
 
 
     def __str__(self):
-        return self.get_status_color_string(f"{format_size(self.theoretical_size).rjust(8)} - {self.path}")
+        importers = ""
+        if self.target_module and len(self.target_module.importers) > 0:
+            importers = sorted(self.target_module.importers)
+        
+        if self.target_module:
+            size_to_print = f"r {self.target_module.real_size}"
+        else:
+            size_to_print = f"t {self.theoretical_size}"
+        
+        return self.get_status_color_string(f"{format_size(size_to_print).rjust(8)} - {self.path} - {importers}")
 
 class YoctoPackage(object):
     def __init__(self, name, recipe_name, path: Path, only_on_target: bool):
@@ -56,14 +70,15 @@ class YoctoPackage(object):
         self.path = path
 
         self.files = {}
-        self.theoretical_size = 0
+        self.theoretical_size = None
+        self.real_size = None
 
         self.status = PackageStatus.NEUTRAL
         
         self.only_on_target = only_on_target
 
         self.populate_files()
-        self.calculate_size()
+        self.calculate_theoretical_size()
 
     def populate_files(self):
         self.files.clear()
@@ -77,10 +92,15 @@ class YoctoPackage(object):
                 
                 self.files[yocto_package_file.path] = yocto_package_file
 
-    def calculate_size(self):
+    def calculate_theoretical_size(self):
         self.theoretical_size = 0
         for file in self.files.values():
             self.theoretical_size += file.theoretical_size
+
+    def calculate_real_size(self):
+        self.real_size = 0
+        for file in self.files.values():
+            self.real_size += file.target_module.real_size
 
     def update_own_status(self):
         file_statuses = set()

@@ -2,12 +2,12 @@ import settings
 
 from common.util.logging import print
 
-from .local_step import LocalStep
-from ._step_5_map_target_dependencies import MapTargetDependencies
+from common.task.base.local_task import LocalTask
+from common.task.mapper.map_target_dependencies import MapTargetDependencies
 
-class MapUnimportedTargetModules(LocalStep):
+class PrintUnimportedTargetModules(LocalTask):
 
-    previous_step = MapTargetDependencies
+    previous_task = MapTargetDependencies
 
     def _run_locally(self):
         print(f"## Mapping unimported target Python modules... ##")
