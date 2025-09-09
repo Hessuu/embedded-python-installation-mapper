@@ -37,24 +37,22 @@ class Package(object):
     @property
     def real_size(self) -> RealSize:
         real_size = RealSize(0)
-        print(self.name)
 
         for file in self.file_objects.values():
-            print(file.get_string(FileObjectSizeType.REAL_SIZE))
             real_size += file.real_size
         return real_size
 
     @property
-    def is_python_package(self):
+    def is_python_package(self) -> bool:
         ''' Check common disqualifiers. '''
         if not self.__is_proper_package:
             return False
-        
+
         ''' We trust that every package starting 
         with "python" is a Python package. '''
         if self.path.name.startswith("python"):
             return True
-        
+
         ''' Packages can also be Python packages
         if they contain Python files. '''
         if self.__contains_python_files:
@@ -84,11 +82,11 @@ class Package(object):
             self.path.match("*-tests")
         ):
             return False
-        
+
         # Package must contain file objects.
         if len(self.file_objects) <= 0:
             return False
-        
+
         return True
 
     @property
@@ -117,7 +115,7 @@ class Package(object):
 
     def get_string(self):
         self.update_status()
-        
+
         # Get the proper size to use.
         if self.status == PackageStatus.NOT_ON_DEVICE:
             size = self.theoretical_size
@@ -144,17 +142,17 @@ class Package(object):
                 else:
                     # File objects need to print the same file size type.
                     files_string += "    " + file.get_string(size.type) + "\n"
-            
+
             # Don't show pycache files to improve readability.
             if pycache_found:
                 status_string += " - (pycache hidden)"
 
         # Create the package part of the string.
         own_string = f"{info_string}\n{status_string}\n"
-        
-        # Colorize only the package part.
+
+        # Only color the package part.
         own_string = self.__get_status_color_string(own_string)
-        
+
         # Add files if we found any.
         string = f"{own_string}{files_string}"
 

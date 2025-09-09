@@ -43,16 +43,12 @@ def is_python_file(path: Path, ignore_pycs: bool):
     if path.is_file():
         # Ignore pycs. In module terms they are duplicates of .py-files.
         if ignore_pycs and path.suffix == ".pyc":
-            print(f"FALSE, PYCFILE: {path}")
             return False
 
         if __is_importable_module(path):
-            print(f"TRUE, MODULE:   {path}")
             return True
         if __is_python_script_file(path):
-            print(f"TRUE, SCRIPT:   {path}")
             return True
         if __is_python_bytecode_file(path):
-            print(f"TRUE, BYTECODE: {path}")
             return True
     return False
