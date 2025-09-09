@@ -3,10 +3,11 @@
 ## Vocabulary
 | Term    | Meaning |
 | -------- | ------- |
-| Host | The developer's or user's machine like a desktop computer or a laptop. |
-| Target | The device under development or evaluation, like an embedded device. |
+| Host | The developer's or user's machine like a desktop computer or a laptop where the mapper is started from. |
+| Target | The device under development or evaluation, like an embedded device. This is the system whose Python installation is being mapped. |
 | File object | A file or a directory. |
 | Package | A collection of related file objects. For example, a package from Yocto, or all files in a directory. |
-
+| Python module | Anything that is either: <br> (1) Executable with the Python interpreter <br> (2) Importable from another Python module. <br><br> Python modules can be file objects on the file system or a built-in module that is part of the interpreter. Files can be in Python's native formats .py and .pyc, but also "foreign" formats like .so and .rst |
+| Python file | A Python module that explicitly manifests as a file on the file system (i.e. not a built-in). |
 
 
