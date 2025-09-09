@@ -15,10 +15,10 @@ class MapYoctoPackages(LocalTask):
         print(f"## Mapping Yocto Python packages... ##")
 
         self._session = Session()
-        self._session.yocto_packages.populate(settings.YOCTO_TARGET_WORK_DIRS)
+        self._session.packages.populate_on_host(settings.YOCTO_TARGET_WORK_DIRS)
 
         print(f"## Mapped Yocto Python packages. ##")
         print()
 
     def print_result(self):
-        print(self._session.yocto_packages)
+        print(self._session.packages)

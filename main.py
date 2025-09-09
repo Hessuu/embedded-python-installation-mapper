@@ -7,7 +7,8 @@ from pathlib import Path
 from queue import LifoQueue
 
 from common import task
-from common.util import color_string
+from common.util.color_string import ColorString
+from common.util.location import *
 from common.util.logging import print, set_tag_and_color_print_func
 from common.task.base.local_task import LocalTask
 from common.session import Session
@@ -29,9 +30,11 @@ parser.add_argument("--remote", action='store_true', help=argparse.SUPPRESS)
 args = parser.parse_args()
 
 if args.remote:
-    set_tag_and_color_print_func("REM", color_string.yellow)
+    Location.current = Location.TARGET
+    set_tag_and_color_print_func("REM", ColorString.yellow)
 else:
-    set_tag_and_color_print_func("LOC", color_string.green)
+    Location.current = Location.HOST
+    set_tag_and_color_print_func("LOC", ColorString.green)
 
 print(args)
 

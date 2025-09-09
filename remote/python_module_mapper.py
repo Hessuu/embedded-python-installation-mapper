@@ -4,9 +4,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from common.python_module_collection import PythonModuleCollection
 from common.python_file import is_python_file
-from remote.python_module import PythonModule, get_module_full_name_from_path
+from common.python_module import PythonModule, get_module_full_name_from_path
+from common.python_module_collection import PythonModuleCollection
 
 # For Python 3.10+
 STD_LIB_MODULES = sys.stdlib_module_names

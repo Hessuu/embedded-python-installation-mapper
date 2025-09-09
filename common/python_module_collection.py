@@ -1,6 +1,6 @@
 import collections
 import os
-from common.util.file_object_size import format_size
+from common.util.file_object_size import *
 from enum import Enum
 
 class SORT_BY(Enum):
@@ -32,8 +32,9 @@ class PythonModuleCollection(collections.UserDict):
         )
 
     def get_size(self):
-        real_size = 0
-        theoretical_size = 0
+        real_size = RealSize(0)
+        theoretical_size = TheoreticalSize(0)
+
         for module in self.sorted_list_by_name():
             real_size        += module.real_size
             theoretical_size += module.theoretical_size

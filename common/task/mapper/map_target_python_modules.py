@@ -10,7 +10,7 @@ from common.task.mapper.check_target_files import CheckTargetFiles
 ############
 ## TASK 4 ##
 ############
-class MapTargetModules(RemoteTask):
+class MapTargetPythonModules(RemoteTask):
 
     previous_task = CheckTargetFiles
 
@@ -20,7 +20,7 @@ class MapTargetModules(RemoteTask):
         print(f"## Mapping target Python modules... ##")
 
         python_module_mapper.find_all_available_modules(
-            self._session.target_modules,
+            self._session.python_modules,
             settings.ENTRY_POINTS_ON_TARGET,
             settings.ADDITIONAL_PYTHON_SEARCH_PATHS_ON_TARGET,
             settings.REMOTE_ROOT_PATH
@@ -30,4 +30,4 @@ class MapTargetModules(RemoteTask):
         print()
 
     def print_result(self):
-        self._session.target_modules.print_all("available_modules")
+        self._session.python_modules.print_all("available_modules")

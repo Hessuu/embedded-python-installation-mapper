@@ -15,7 +15,7 @@ class CombineTargetAndLocalData(LocalTask):
     def _run_locally(self):
         print(f"## Combining target module and Yocto package data... ##")
 
-        self._session.yocto_packages.combine_with_target_module_data(self._session.target_modules)
+        self._session.packages.combine_with_python_module_data(self._session.python_modules)
 
         print(f"## Combined target module and Yocto package data. ##")
         print()

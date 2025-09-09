@@ -1,5 +1,5 @@
 import os, sys
-from common.util.file_object_size import get_file_real_size, get_file_theoretical_size, format_size
+from common.util.file_object_size import *
 from pathlib import Path
 
 def _get_sorted_search_paths(search_paths: list[str]):
@@ -43,16 +43,18 @@ def _get_first_and_last_name(full_name):
     last_name = "".join(last_name_components)
     return (first_name, last_name)
 
-class PythonModule(object):
+class PythonModule(object):    
+    @target_only
     def __init__(self, path: Path, full_name: str, search_paths: list[str], is_built_in: bool = False, is_entry_point: bool = False, importer: str = None):
 
+        real_size = RealSize(None)
+        theoretical_size = TheoreticalSize(None)
+
         if path:
-            real_size        = get_file_real_size(path)
-            theoretical_size = get_file_theoretical_size(path)
+            real_size.measure(path)
+            theoretical_size.measure(path)
         else:
             path = Path("")
-            real_size = 0
-            theoretical_size = 0
 
         if not full_name:
             full_name = get_module_full_name_from_path(path, search_paths)
