@@ -118,29 +118,45 @@ class Package(object):
     def get_string(self):
         self.update_status()
         
-        ''' The size type that the package prints should match what the
-        file objects print. '''
-        size = None
+        # Get the proper size to use.
         if self.status == PackageStatus.NOT_ON_DEVICE:
             size = self.theoretical_size
         else:
             size = self.real_size
+        size_string = size.format(align=False)
 
-        string = self.__get_status_color_string(f"{self.name} , {self.recipe_name} , {size.format()} , {self.path} {self.status.value}")
+        # Add first row for basic info.
+        info_string = f"{self.name} , {self.recipe_name} , {size.format()} , {self.path}"
 
-        ''' Print all file objects only if the package is present on device. '''
+        # Add second row for status info.
+        status_string = f"{self.status.value}"
+
+        # Get strings for our files, if our package is on the target.
+        files_string = ""
         if self.status == PackageStatus.NOT_ON_DEVICE:
-            string += " (file objects hidden)\n"
+            status_string += " - (file objects hidden)"
         else:
-            pyc_files_hidden_str = ""
-            files_string = ""
+            pycache_found = False
 
             for file in self.file_objects.values():
                 if file.path.match("*/__pycache__/*"):
-                    pyc_files_hidden_str = " (pycache hidden)"
+                    pycache_found = True
                 else:
+                    # File objects need to print the same file size type.
                     files_string += "    " + file.get_string(size.type) + "\n"
-            string += pyc_files_hidden_str + "\n" + files_string
+            
+            # Don't show pycache files to improve readability.
+            if pycache_found:
+                status_string += " - (pycache hidden)"
+
+        # Create the package part of the string.
+        own_string = f"{info_string}\n{status_string}\n"
+        
+        # Colorize only the package part.
+        own_string = self.__get_status_color_string(own_string)
+        
+        # Add files if we found any.
+        string = f"{own_string}{files_string}"
 
         return string
 

@@ -44,8 +44,8 @@ class FileObject(object):
         
         self.update_theoretical_size()
 
-        # TODO: setting more permanent flags like this could be useful,
-        # rather than relying on file status alone.
+        ''' TODO: setting more permanent flags like this could be useful,
+        rather than relying on file status alone. '''
         self.found_on_target = False
 
         #TODO: use more
@@ -69,7 +69,6 @@ class FileObject(object):
                 size = self.theoretical_size
             case _:
                 raise Exception(f"Invalid size type: {file_object_size_type}")
-
         size_string = size.format(align=True)
         
         # Set up the string-
