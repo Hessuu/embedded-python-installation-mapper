@@ -32,10 +32,6 @@ def host_only(func):
         from epim.application import Application, Location
 
         assert Application.location == Location.HOST
-
-        if isinstance(func, (classmethod, staticmethod)):
-            return func.__func__(*args, **kwargs)
-
         return func(*args, **kwargs)
     return wrapper
 
@@ -44,10 +40,6 @@ def target_only(func):
         from epim.application import Application, Location
 
         assert Application.location == Location.TARGET
-
-        if isinstance(func, (classmethod, staticmethod)):
-            return func.__func__(*args, **kwargs)
-
         return func(*args, **kwargs)
     return wrapper
 
@@ -58,9 +50,5 @@ def host_and_target(func):
         from epim.application import Application, Location
 
         assert Application.location == Location.HOST or Application.location == Location.TARGET
-
-        if isinstance(func, (classmethod, staticmethod)):
-            return func.__func__(*args, **kwargs)
-
         return func(*args, **kwargs)
     return wrapper
