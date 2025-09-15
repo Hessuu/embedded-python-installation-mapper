@@ -6,70 +6,46 @@ import pkgutil
 from pathlib import Path
 from queue import LifoQueue
 
-from common import task
-from common.util.color_string import ColorString
-from common.util.location import *
-from common.util.logging import print, set_tag_and_color_print_func
-from common.task.base.local_task import LocalTask
-from common.session import Session
+import epim.tasks as tasks
+from epim.application import *
+from epim.util.color_string import *
+from epim.util.logging import * 
+from epim.session import Session
+from epim.task_queue import *
+from epim.tasks import *
 
-task_choices = task.get_all()
-task_choices_with_all = task_choices.copy()
-task_choices_with_all["all"] = "all"
+# Get tasks that can be shown to the user
+visible_tasks = tasks.get_visible()
 
+# Parse arguments
 parser = argparse.ArgumentParser()
 
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-r", "--run", choices=task_choices_with_all.keys())
-group.add_argument("-o", "--run-only", choices=task_choices.keys())
-
-parser.add_argument("-f", "--force-rerun-dependencies")
-parser.add_argument("--remote", action='store_true', help=argparse.SUPPRESS)
-
+parser.add_argument("task", choices=visible_tasks)
+parser.add_argument("-f", "--force-rerun-dependencies", action="store_true")
+parser.add_argument("--remote", action="store_true", help=argparse.SUPPRESS)
 
 args = parser.parse_args()
 
+# Set application metadata
 if args.remote:
-    Location.current = Location.TARGET
+    Application.initialize(Location.TARGET)
+
     set_tag_and_color_print_func("REM", ColorString.yellow)
 else:
-    Location.current = Location.HOST
+    Application.initialize(Location.HOST)
+
     set_tag_and_color_print_func("LOC", ColorString.green)
 
 print(args)
 
-task_queue = LifoQueue()
-
-# Construct a task queue based on arguments
-if args.run:
-    if args.run == "all":
-        pass
-    else:
-        target_task = task_choices[args.run]
-        task_queue = task.populate_task_queue_for_target_task(task_queue, target_task)
-
-elif args.run_only:
-    target_task = task_choices[args.run_only]
-    task_queue.put(target_task)
+# Create and run task queue
+task_queue = TaskQueue()
+if args.remote:
+    # On remote, only run a single task.
+    task_queue.populate(visible_tasks[args.task], add_dependencies=False)
 
 else:
-    raise Exception("bad args")
+    # On host, run all dependencies for the task..
+    task_queue.populate(visible_tasks[args.task], add_dependencies=True)
 
-# Run task queue
-current_task = None
-final_task_inst = None
-while not task_queue.empty():
-    current_task = task_queue.get()
-    current_task_inst = current_task()
-
-    print(f"#### Next task: {current_task_inst.cli_name} ####")
-
-    current_task_inst.run(args.remote)
-
-    print(f"#### Task Done: {current_task_inst.cli_name} ####")
-    print()
-    
-    final_task_inst = current_task_inst
-
-if not args.remote:
-    final_task_inst.print_result()
+task_queue.run()

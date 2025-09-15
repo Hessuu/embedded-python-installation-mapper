@@ -1,0 +1,25 @@
+import settings
+from epim.tasks.base.remote_task import RemoteTask
+from epim.util.logging import *
+
+############
+## TASK 5 ##
+############
+class MapTargetDependencies(RemoteTask):
+
+    _previous_task_name = "MapTargetPythonModules"
+    visible = False
+
+    def _run_locally(self, session):
+        from remote import python_module_mapper
+
+        print(f"## Mapping target Python dependencies... ##")
+
+        python_module_mapper.find_all_dependencies(
+            session.python_modules,
+            settings.ENTRY_POINTS_ON_TARGET,
+            settings.REMOTE_ROOT_PATH
+            )
+
+        print(f"## Mapped target Python dependencies. ##")
+        print()
