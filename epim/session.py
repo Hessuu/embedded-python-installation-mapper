@@ -2,6 +2,7 @@ from pickle import Pickler, Unpickler
 
 import settings
 from epim.application import *
+from epim.util.logging import *
 from epim.package_collection import *
 from epim.python_module_collection import *
 from epim.util.decorators import *
@@ -15,6 +16,7 @@ class Session(object):
     def __init__(self):
         self.python_packages = PackageCollection()
         self.python_modules = PythonModuleCollection()
+        self.all_file_objects = {}
 
 
 ## PUBLIC ##  
@@ -24,8 +26,8 @@ class Session(object):
         local_path = cls.__get_local_path(name)
         return local_path.exists()
         
-    @host_and_target
     @classmethod
+    @host_and_target
     def load_from_disk(cls, name):
         local_session_path =  cls.__get_local_path(name)
 
@@ -37,8 +39,8 @@ class Session(object):
         with open(local_session_path, "rb") as session_file:
             return Unpickler(session_file).load()
 
-    @host_only
     @classmethod
+    @host_only
     def load_from_remote(cls, name):
         from epim.host.remote_operation import RemoteOperation
         

@@ -6,7 +6,7 @@ from epim.util.logging import *
 ############
 class CombineHostAndTargetData(LocalTask):
 
-    _previous_task_name = "MapTargetDependencies"
+    _previous_task_name = "MapTargetPythonDependencies"
     visible = False
 
     def _run_locally(self, session):

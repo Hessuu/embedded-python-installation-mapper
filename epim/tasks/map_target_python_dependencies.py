@@ -5,13 +5,13 @@ from epim.util.logging import *
 ############
 ## TASK 5 ##
 ############
-class MapTargetDependencies(RemoteTask):
+class MapTargetPythonDependencies(RemoteTask):
 
     _previous_task_name = "MapTargetPythonModules"
     visible = False
 
     def _run_locally(self, session):
-        from remote import python_module_mapper
+        from epim.remote import python_module_mapper
 
         print(f"## Mapping target Python dependencies... ##")
 

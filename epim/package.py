@@ -7,14 +7,13 @@ from epim.file_object import *
 from epim.util.color_string import *
 from epim.util.decorators import *
 from epim.util.file_object_size import *
+from epim.util.logging import *
 
 class PackageStatus(Enum):
-    PARTLY_REQUIRED = "PARTLY_REQUIRED"        # Some files are REQUIRED, some are NOT_REQUIRED (rest may be NOT_HANDLED).
-    FULLY_REQUIRED = "FULLY_REQUIRED"          # All or some files are REQUIRED (rest may be NOT_HANDLED).
-    FULLY_NOT_REQUIRED = "FULLY_NOT_REQUIRED"  # All or some files are NOT_REQUIRED (rest may be NOT_HANDLED).
-    FULLY_NOT_HANDLED = "FULLY_NOT_HANDLED"    # All files are NOT_HANDLED.
-    NOT_ON_DEVICE = "NOT_ON_DEVICE"            # All or some files are NOT_FOUND (rest may be NOT_HANDLED).
-    UNINITIALIZED = "UNINITIALIZED"            # Starting state.
+    OK = "OK"                                   # All files are OK.
+    SOME_REMOVABLE = "SOME_REMOVABLE"           # Some files are OK, but rest need attention.
+    FULLY_REMOVABLE = "FULLY_REMOVABLE"         # Package can likely be removed.
+    NOT_ON_DEVICE = "NOT_ON_DEVICE"             # None of the files are present on target.
 
 class PackageType(Enum):
     HOST_AND_TARGET = "HOST_AND_TARGET"
@@ -38,8 +37,8 @@ class Package(object):
     def real_size(self) -> RealSize:
         real_size = RealSize(0)
 
-        for file in self.file_objects.values():
-            real_size += file.real_size
+        for file_object in self.file_objects.values():
+            real_size += file_object.real_size
         return real_size
 
     @property
@@ -108,18 +107,16 @@ class Package(object):
         self.path = path
 
         self.package_type = package_type
-
-        self.status = PackageStatus.UNINITIALIZED
         
         self.found_on_target = None
 
         self.file_objects = None
 
     def get_string(self):
-        self.update_status()
+        status = self.get_status()
 
         # Get the proper size to use.
-        if self.status == PackageStatus.NOT_ON_DEVICE:
+        if self.found_on_target == False:
             size = self.theoretical_size
         else:
             size = self.real_size
@@ -129,11 +126,11 @@ class Package(object):
         info_string = f"{self.name} , {self.recipe_name} , {size.format()} , {self.path}"
 
         # Add second row for status info.
-        status_string = f"{self.status.value}"
+        status_string = f"{status.value}"
 
         # Get strings for our files, if our package is on the target.
         files_string = ""
-        if self.status == PackageStatus.NOT_ON_DEVICE:
+        if status == PackageStatus.NOT_ON_DEVICE:
             status_string += " - (file objects hidden)"
         else:
             pycache_found = False
@@ -153,7 +150,7 @@ class Package(object):
         own_string = f"{info_string}\n{status_string}\n"
 
         # Only color the package part.
-        own_string = self.__get_status_color_string(own_string)
+        own_string = self.__get_status_color_string(status, own_string)
 
         # Add files if we found any.
         string = f"{own_string}{files_string}"
@@ -161,34 +158,50 @@ class Package(object):
         return string
 
     @host_and_target
-    def populate_file_objects(self):
+    def populate_file_objects(self, all_file_objects):
         self.file_objects = {}
 
         for file_object_local_path in self.path.rglob("*"):
-            if file_object_local_path.is_file():
 
-                match Application.location:
-                    # On host, remove package's directory from path.
-                    case Location.HOST:
-                        assert self.package_type == PackageType.HOST_AND_TARGET
+            match Application.location:
+                # On host, remove package's directory from path.
+                case Location.HOST:
+                    assert self.package_type == PackageType.HOST_AND_TARGET
 
-                        file_object_target_path = "/" / file_object_local_path.relative_to(self.path)
-                        file_object = FileObject(file_object_target_path, file_object_local_path)
+                    file_object_target_path = "/" / file_object_local_path.relative_to(self.path)
+                    file_object = FileObject(file_object_target_path, file_object_local_path)
 
-                    # On target, path is used as-is.
-                    case Location.TARGET:
-                        assert self.package_type == PackageType.TARGET_ONLY
-                        
-                        file_object_target_path = "/" / file_object_local_path
-                        file_object = FileObject(file_object_target_path, None)
+                # On target, path is used as-is.
+                case Location.TARGET:
+                    assert self.package_type == PackageType.TARGET_ONLY
+                    
+                    file_object_target_path = "/" / file_object_local_path
+                    file_object = FileObject(file_object_target_path, None)
 
-                    case _:
-                        raise Exception(f"Invalid current location: {Location.current}")
+                case _:
+                    raise Exception(f"Invalid current location: {Location.current}")
 
-                self.file_objects[file_object.path] = file_object
-
+            # Add to all file objects.
+            if not file_object.path in all_file_objects:
+                all_file_objects[file_object.path] = file_object
             else:
-                # TODO: Handle directories.
+                if file_object_local_path.is_dir():
+                    # Same directory may be in multiple packages, not an error.
+                    # NOTE: We lose information on which packages a directory is from.
+                    pass
+                else:
+                    # For files it is an error to be found in multiple packages.
+                    raise Exception(f"Same file present in multiple packages: {file_object_local_path}")
+
+            # Add to this package's file objects.
+            if not file_object_local_path.is_dir():
+                if not file_object.path in self.file_objects:
+                    self.file_objects[file_object.path] = file_object
+                else:
+                    # Same file absolutely cannot be twice in the same package.
+                    assert False
+            else:
+                # NOTE: We currently do not add directories to packages.
                 pass
 
     @target_only
@@ -197,8 +210,9 @@ class Package(object):
         all_not_found = True
         
         for file_object in self.file_objects.values():
+            
+            # Existence
             file_object.check_existence_on_target()
-
             if file_object.found_on_target:
                 all_not_found = False
                 file_object.update_real_size_on_target()
@@ -214,74 +228,132 @@ class Package(object):
         if all_found and all_not_found:
             raise Exception(f"Package with no file objects: {self.name}")
         
+        # Update own status
         if all_found:
             self.found_on_target = True
-        
+        elif all_not_found:
+            self.found_on_target = False
+        else:
+            assert False
 
-    def update_status(self):
+    def get_status(self):
         file_object_statuses = set()
 
+        total_files = 0
+        
+        # These together should add up to total files
+        ok_files = 0
+        neutral_files = 0
+        problem_files = 0
+        unknown_files = 0
+        not_found_files = 0
+
+        # Count files
+        for file_object in self.file_objects.values():
+            # All
+            total_files += 1
+            
+            match file_object.get_status():
+                case FileObjectStatus.REQUIRED:
+                    ok_files += 1
+                case FileObjectStatus.NOT_REQUIRED:
+                    problem_files += 1
+                case FileObjectStatus.USELESS:
+                    problem_files += 1
+                case FileObjectStatus.NOT_HANDLED:
+                    neutral_files += 1
+                case FileObjectStatus.NOT_FOUND:
+                    not_found_files += 1
+                case FileObjectStatus.UNKNOWN:
+                    neutral_files += 1
+                case _:
+                    raise Exception(f"Invalid file status for: {file_object.path}")
+
+        # Check for errors
+        # Empty?
+        assert total_files > 0
+        # File counting error?
+        assert total_files == ok_files + neutral_files + problem_files + unknown_files + not_found_files
+        # All files unknown?
+        assert not total_files == unknown_files
+        # Missing files? Could be user error.
+        if not_found_files > 0 and not_found_files != total_files:
+            raise Exception(f"Some files missing for package: {self.name}")
+
+        # Statuses, no particular order should be needed.
+        if total_files == ok_files + neutral_files:
+            return PackageStatus.OK
+
+        if ok_files > 0 and problem_files > 0:
+            return PackageStatus.SOME_REMOVABLE
+
+        if total_files == problem_files + neutral_files:
+            return PackageStatus.FULLY_REMOVABLE
+
+        if total_files == not_found_files:
+            return PackageStatus.NOT_ON_DEVICE
+
+
+        '''
         for file_object in self.file_objects.values():
             file_object_statuses.add(file_object.status)
             
         # Package with some needed Python files and some unneeded.
-        if FileStatus.REQUIRED in file_object_statuses and FileStatus.NOT_REQUIRED in file_object_statuses:
-            allowed = {FileStatus.REQUIRED, FileStatus.NOT_REQUIRED, FileStatus.NOT_HANDLED}
+        if FileObjectStatus.REQUIRED in file_object_statuses and FileObjectStatus.NOT_REQUIRED in file_object_statuses:
+            allowed = {FileObjectStatus.REQUIRED, FileObjectStatus.NOT_REQUIRED, FileObjectStatus.NOT_HANDLED}
             if file_object_statuses.issubset(allowed):
                 self.status = PackageStatus.PARTLY_REQUIRED
                 return
 
         # Package with only needed Python files.
-        if FileStatus.REQUIRED in file_object_statuses:
-            allowed = {FileStatus.REQUIRED, FileStatus.NOT_HANDLED}
+        if FileObjectStatus.REQUIRED in file_object_statuses:
+            allowed = {FileObjectStatus.REQUIRED, FileObjectStatus.NOT_HANDLED}
             if file_object_statuses.issubset(allowed):
                 self.status = PackageStatus.FULLY_REQUIRED
                 return
 
         # Package with only unneeded Python files.
-        if FileStatus.NOT_REQUIRED in file_object_statuses:
-            allowed = {FileStatus.NOT_REQUIRED, FileStatus.NOT_HANDLED}
+        if FileObjectStatus.NOT_REQUIRED in file_object_statuses:
+            allowed = {FileObjectStatus.NOT_REQUIRED, FileObjectStatus.NOT_HANDLED}
             if file_object_statuses.issubset(allowed):
                 self.status = PackageStatus.FULLY_NOT_REQUIRED
                 return
 
         # Package only includes files we cannot process.
         # TODO: is this actually an error?
-        if file_object_statuses == {FileStatus.NOT_HANDLED}:
+        if file_object_statuses == {FileObjectStatus.NOT_HANDLED}:
             self.status = PackageStatus.FULLY_NOT_HANDLED
             return
 
         # Package is not on the device.
-        if FileStatus.NOT_FOUND in file_object_statuses:
-            allowed = {FileStatus.NOT_FOUND, FileStatus.NOT_HANDLED}
+        if FileObjectStatus.NOT_FOUND in file_object_statuses:
+            allowed = {FileObjectStatus.NOT_FOUND, FileObjectStatus.NOT_HANDLED}
             if file_object_statuses.issubset(allowed):
                 self.status = PackageStatus.NOT_ON_DEVICE
                 return
 
         # Package has not been processed yet by us.
-        if FileStatus.UNINITIALIZED in file_object_statuses:
-            allowed = {FileStatus.UNINITIALIZED, FileStatus.NOT_HANDLED}
+        if FileObjectStatus.UNINITIALIZED in file_object_statuses:
+            allowed = {FileObjectStatus.UNINITIALIZED, FileObjectStatus.NOT_HANDLED}
             if file_object_statuses.issubset(allowed):
                 self.status = PackageStatus.UNINITIALIZED
                 return
-
+        '''
         raise Exception(f"Unable to choose package status for: {self.name} with statuses: {file_object_statuses}")
 
 ## PRIVATE ##
 
-    def __get_status_color_string(self, string):
-
-        if self.status == PackageStatus.PARTLY_REQUIRED:
-            return ColorString.yellow(string)
-        elif self.status == PackageStatus.FULLY_REQUIRED:
-            return ColorString.green(string)
-        elif self.status == PackageStatus.UNINITIALIZED:
-            return ColorString.purple(string)
-        elif self.status == PackageStatus.FULLY_NOT_REQUIRED:
-            return ColorString.red(string)
-        elif self.status == PackageStatus.FULLY_NOT_HANDLED:
-            return string
-        elif self.status == PackageStatus.NOT_ON_DEVICE:
-            return string
-        else:
-            raise Exception(f"Unable to get package status color for: {self.name} with statuses: {self.status}")
+    def __get_status_color_string(self, status, string):
+        
+        match status:
+            case PackageStatus.OK:
+                return ColorString.green(string)
+            case PackageStatus.SOME_REMOVABLE:
+                return ColorString.yellow(string)
+            case PackageStatus.FULLY_REMOVABLE:
+                return ColorString.red(string)
+            case PackageStatus.NOT_ON_DEVICE:
+                return string
+            case _:
+                raise Exception(f"Unable to get package status color for: {self.name} with statuses: {status}")
+            

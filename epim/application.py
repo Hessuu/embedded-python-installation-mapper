@@ -3,6 +3,7 @@ from pathlib import Path
 
 import settings
 from epim.util.decorators import classproperty
+from epim.util.logging import *
 
 class Location(Enum):    
     # The developer's PC.
@@ -22,7 +23,11 @@ class Application(object):
     @classproperty
     def location(cls) -> Location:
         return cls.__location
-    
+
+    @classproperty
+    def local_root_path(cls) -> Path:
+        return cls.__local_root_path
+
     @classproperty
     def remote_root_path(cls) -> Path:
         return cls.__remote_root_path
@@ -46,22 +51,20 @@ class Application(object):
             cls.__local_root_path = settings.LOCAL_ROOT_PATH
             cls.__remote_root_path = settings.REMOTE_ROOT_PATH
 
+            print(f"Creating sessions dir: {cls.local_session_dir_path}")
+            cls.local_session_dir_path.mkdir(parents=False, exist_ok=True)
+
         elif location == Location.TARGET:
             # Target is only aware of itself.
             cls.__local_root_path = settings.REMOTE_ROOT_PATH
             cls.__remote_root_path = None
 
+            # Target session dir can't be created at this point, because it is already needed.
+
         else:
             raise Exception(f"Invalid location: {location}")
 
-        # Create local session dir.
-        # We expect the root path to exist.
-        cls.local_session_dir_path.mkdir(parents=False, exist_ok=True)
-        
         # TODO: Clear if -f is set
-        # Always clear session dir on target.
-        if location == Location.TARGET:
-            cls.clear_sessions()
 
     @classmethod
     def clear_sessions(cls):

@@ -24,9 +24,9 @@ class RemoteOperation(object):
     def __get_connection_for_files(cls):
         connection = cls.__get_fabric_connection()
         connection.open()
-        spc_client = SCPClient(connection.client.get_transport())
+        scp_client = SCPClient(connection.client.get_transport())
     
-        return spc_client
+        return scp_client
     
     ## COMMANDS ##
     @classmethod

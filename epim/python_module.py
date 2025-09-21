@@ -17,9 +17,9 @@ def get_module_full_name_from_path(path: Path, search_paths: list[str]):
             path = path.relative_to(search_path)
             was_on_search_paths = True
 
-    # In case we were not on pythonpath, full name = first name
+    # In case we were not on pythonpath, full name = first name.
+    # The file "known_imports.py" falls into this category.
     if not was_on_search_paths:
-        print(path.stem)
         return path.stem
 
     # Remove extension
@@ -44,7 +44,18 @@ def _get_first_and_last_name(full_name):
     last_name = "".join(last_name_components)
     return (first_name, last_name)
 
-class PythonModule(object):    
+class PythonModule(object):  
+    
+    @property
+    def required(self) -> bool:
+        num_importers = len(self.importers)
+        if num_importers > 0:
+            return True
+        elif num_importers == 0:
+            return False
+        else:
+            raise Exception(f"Invalid importers for module: {self.full_name}")
+      
     @target_only
     def __init__(self, path: Path, full_name: str, search_paths: list[str], is_built_in: bool = False, is_entry_point: bool = False, importer: str = None):
 

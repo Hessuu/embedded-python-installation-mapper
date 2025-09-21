@@ -3,7 +3,6 @@ from pathlib import Path
 
 import settings
 from epim.application import *
-from epim.host.remote_app import *
 from epim.session import Session
 from epim.util.decorators import *
 from epim.util.logging import print
@@ -25,8 +24,8 @@ class RemoteTask(LocalTask):
         elif Application.location == Location.HOST:
 
             # Ensure our app is present on target.
-            from epim.host.remote_app import RemoteOperation
-            RemoteApp.sync(settings.LOCAL_ROOT_PATH, settings.REMOTE_ROOT_PATH)
+            from epim.host.remote_app import RemoteApp
+            RemoteApp.sync()
 
             self.__sync_session_to_remote()
             self.__run_remotely()
@@ -38,9 +37,9 @@ class RemoteTask(LocalTask):
 ## PRIVATE ##
     @host_only
     def __run_remotely(self):
-        from host.remote_operation import RemoteOperation
+        from epim.host.remote_operation import RemoteOperation
 
-        RemoteOperation.command(f"cd {settings.REMOTE_ROOT_PATH} && python3 -m main {self.cli_name} --remote")
+        RemoteOperation.command(f"cd {settings.REMOTE_ROOT_PATH} && python3 -m main --remote {self.cli_name}")
 
     @host_only
     def __sync_session_to_remote(self):

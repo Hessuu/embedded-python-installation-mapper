@@ -3,7 +3,12 @@ import importlib
 import subprocess
 from pathlib import Path
 
-def __file_command(path: Path, match_pattern: str):
+from epim.util.logging import *
+
+# TODO: These are very slow, measure which is faster.
+
+# Needed specifically for Python files lacking file extensions.
+def __is_native_python_file(path: Path):
     command = ["file", str(path)]
     
     command_result = subprocess.run(
@@ -12,8 +17,15 @@ def __file_command(path: Path, match_pattern: str):
         text=True,
         check=True
     )
-    
-    return match_pattern in command_result.stdout
+
+    if "Python script" in command_result.stdout:
+        return True
+
+    elif "Byte-compiled Python module" in command_result.stdout:
+        return True
+
+    else:
+        return False
 
 # Needed specifically for modules implemented as .so files or similar.
 def __is_importable_module(path: Path):
@@ -31,24 +43,24 @@ def __is_importable_module(path: Path):
 
     return False
 
-# Needed specifically for Python scripts lacking file extension.
-def __is_python_script_file(path: Path):
-    return __file_command(path, "Python script")
-
-# Needed specifically for Python bytecode files lacking file extension.
-def __is_python_bytecode_file(path: Path):
-    return __file_command(path, "Byte-compiled Python module")
-
 def is_python_file(path: Path, ignore_pycs: bool):
     if path.is_file():
-        # Ignore pycs. In module terms they are duplicates of .py-files.
-        if ignore_pycs and path.suffix == ".pyc":
-            return False
 
+        # Try to rule out files with fast ways to avoid the slow ways.
+        # We have to trust that these file extensions have not been used on non-Python files.
+        match path.suffix:
+            case ".py":
+                return True
+            case ".pyc":
+                # Ignore pycs. In module terms they are duplicates of .py-files.
+                if ignore_pycs:
+                    return False
+                else:
+                    return True
+        
+        # Slow ways.
         if __is_importable_module(path):
             return True
-        if __is_python_script_file(path):
-            return True
-        if __is_python_bytecode_file(path):
+        if __is_native_python_file(path):
             return True
     return False

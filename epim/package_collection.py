@@ -25,7 +25,7 @@ class PackageCollection(collections.UserDict):
         return string
 
     @host_only
-    def populate_on_host(self, yocto_target_work_dirs: [Path]):
+    def populate_on_host(self, yocto_target_work_dirs: [Path], all_file_objects):
         for work_dir in yocto_target_work_dirs:
             assert(work_dir.exists())
 
@@ -34,7 +34,7 @@ class PackageCollection(collections.UserDict):
                     if package_dir.is_dir():
                         package = Package(package_dir.name, recipe_dir.name, package_dir, PackageType.HOST_AND_TARGET)
 
-                        package.populate_file_objects()
+                        package.populate_file_objects(all_file_objects)
                         
                         if package.is_python_package:
                             self[package.path] = package

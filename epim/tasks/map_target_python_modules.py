@@ -11,7 +11,7 @@ class MapTargetPythonModules(RemoteTask):
     visible = False
 
     def _run_locally(self, session):
-        from remote import python_module_mapper 
+        from epim.remote import python_module_mapper 
 
         print(f"## Mapping target Python modules... ##")
 

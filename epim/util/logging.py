@@ -1,12 +1,16 @@
 
 import builtins
+import sys
 
-_tag = ""
-_color_string_func = None
+from epim.util.color_string import ColorString
+
+_tag = "UNK" # Unknown
+_color_string_func = ColorString.none
 
 
 def print(string: str=""):
     builtins.print(_color_string_func(f"{_tag}: {string}"))
+    sys.stdout.flush()
 
 def set_tag_and_color_print_func(new_tag, color_string_func):
     global _tag

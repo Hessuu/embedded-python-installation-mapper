@@ -2,6 +2,7 @@ from pathlib import Path
 
 import settings
 from epim.host.remote_operation import *
+from epim.application import *
 from epim.util import progress
 from epim.util.logging import print
 
@@ -18,25 +19,30 @@ requirements_dir = f"requirements/{settings.TARGET_PYTHON_VERSION}"
 
 class RemoteApp(object):
         
-    @classmethod    
-    def sync(cls, local_root_path, remote_root_path):
+    @classmethod
+    def sync(cls):
         global sync_done
         if not sync_done:
             print("## SYNCING REMOTE APP... ##")
-    
+
             # Remove old app
-            cls.__remove_old(remote_root_path)
-    
+            cls.__remove_old(Application.remote_root_path)
+
             # Recreate app directory
-            print(f"# Removing old remote app from: {remote_root_path}")
-            RemoteOperation.command(f"mkdir -p {remote_root_path}")
-    
+            print(f"# Removing old remote app from: {Application.remote_root_path}")
+            RemoteOperation.command(f"mkdir -p {Application.remote_root_path}")
+
+            # Create sessions dir
+            print(f"# Removing old remote app from: {Application.remote_root_path}")
+            RemoteOperation.command(f"mkdir -p {Application.remote_session_dir_path}")
+
+
             # Get all components
             components = []
             for app_component in app_components:
-                components.append(local_root_path / app_component)
+                components.append(Application.local_root_path / app_component)
     
-            requirements_dir_path = local_root_path / requirements_dir
+            requirements_dir_path = Application.local_root_path / requirements_dir
             for requirement_path in requirements_dir_path.iterdir():
                 components.append(requirement_path)
     
@@ -48,10 +54,10 @@ class RemoteApp(object):
             for number, component in enumerate(components, start=1):
     
                 if component.is_file():
-                    RemoteOperation.put_file(component, remote_root_path)
+                    RemoteOperation.put_file(component, Application.remote_root_path)
     
                 elif component.is_dir():
-                    RemoteOperation.put_dir(component, remote_root_path)
+                    RemoteOperation.put_dir(component, Application.remote_root_path)
     
                 else:
                     raise Exception(f"Invalid component: {component}")

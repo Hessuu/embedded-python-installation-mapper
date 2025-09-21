@@ -15,37 +15,47 @@ from epim.task_queue import *
 from epim.tasks import *
 
 # Get tasks that can be shown to the user
+all_tasks = tasks.get_all()
 visible_tasks = tasks.get_visible()
 
 # Parse arguments
 parser = argparse.ArgumentParser()
+group = parser.add_mutually_exclusive_group(required=True)
 
-parser.add_argument("task", choices=visible_tasks)
+# User-facing tasks
+group.add_argument("-t", "--task", choices=visible_tasks)
+
+# All tasks
+group.add_argument("--remote-task", choices=all_tasks,  help=argparse.SUPPRESS)
+
 parser.add_argument("-f", "--force-rerun-dependencies", action="store_true")
-parser.add_argument("--remote", action="store_true", help=argparse.SUPPRESS)
+
+
 
 args = parser.parse_args()
 
 # Set application metadata
-if args.remote:
-    Application.initialize(Location.TARGET)
-
+if args.remote_task:
     set_tag_and_color_print_func("REM", ColorString.yellow)
-else:
-    Application.initialize(Location.HOST)
 
+    Application.initialize(Location.TARGET)
+else:
     set_tag_and_color_print_func("LOC", ColorString.green)
+
+    Application.initialize(Location.HOST)
 
 print(args)
 
 # Create and run task queue
 task_queue = TaskQueue()
-if args.remote:
+if args.remote_task:
     # On remote, only run a single task.
-    task_queue.populate(visible_tasks[args.task], add_dependencies=False)
+    target_task = all_tasks[args.remote_task]
+    task_queue.populate(target_task, add_dependencies=False)
 
 else:
     # On host, run all dependencies for the task..
-    task_queue.populate(visible_tasks[args.task], add_dependencies=True)
+    target_task = visible_tasks[args.task]
+    task_queue.populate(target_task, add_dependencies=True)
 
-task_queue.run()
+task_queue.run(target_task)

@@ -2,7 +2,9 @@ from queue import LifoQueue
 
 import epim.tasks as tasks
 import settings
+from epim.session import *
 from epim.tasks import *
+
 
 class TaskQueue(LifoQueue):
     def populate(self, target_task, add_dependencies: bool=True):
@@ -18,18 +20,28 @@ class TaskQueue(LifoQueue):
 
         #print(f"TaskQueue: {self}")
 
-    def run(self):
+    def run(self, target_task):
 
         current_task = None
         while not self.empty():
             current_task = self.get()
+            
+            # TODO -f option
+            # Current task should not be skipped.
+            if current_task != target_task:
+                if Session.exists(current_task.name):
+                    print(f"#### Skipping already done task: {current_task.cli_name} ####")
+                    print()
+                    continue
+
+
             current_task_instance = current_task()
         
-            print(f"#### Next task: {current_task_instance.cli_name} ####")
+            print(f"#### Next task: {current_task.cli_name} ####")
         
             current_task_instance.run()
         
-            print(f"#### Task Done: {current_task_instance.cli_name} ####")
+            print(f"#### Task Done: {current_task.cli_name} ####")
             print()
 
 

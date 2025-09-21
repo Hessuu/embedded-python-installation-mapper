@@ -37,8 +37,6 @@ class LocalTask(object):
     def previous_task(cls):
         if cls._previous_task_name:
             task_class = tasks.get_class(cls._previous_task_name)
-            print(task_class)
-            print(task_class.name)
             return task_class
         else:
             return None
@@ -70,8 +68,6 @@ class LocalTask(object):
 
     def _load_session(self):
         if self._previous_task_name:
-            print(f"self._previous_task_name: {self._previous_task_name}")
-            print(f"self.previous_task: {self.previous_task}")
             self._session = Session.load_from_disk(self.previous_task.name)
         else:
             # The source of all sessions.

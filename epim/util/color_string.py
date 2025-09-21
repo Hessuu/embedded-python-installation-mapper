@@ -14,4 +14,9 @@ class ColorString(object):
     
     def cyan(string: str):
         return f"\033[96m{string}\033[00m"
+
+    def dark_red(string: str):
+        return f"\033[31m{string}\033[00m"
     
+    def none(string: str):
+        return string

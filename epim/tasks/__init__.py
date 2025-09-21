@@ -57,6 +57,18 @@ for python_file in Path(_package_dir).glob("*.py"):
 #print(f"{_task_dictionary}")
 #print()
 
+def get_all():
+    all_task_classes = {}
+    
+    for task_class in _task_dictionary.values():
+        # Use the printable_name as the key
+        all_task_classes[task_class.cli_name] = task_class
+
+    return all_task_classes
+
+__all__.append(get_all.__name__)
+
+
 def get_visible():
     visible_task_classes = {}
 
@@ -68,6 +80,7 @@ def get_visible():
     return visible_task_classes
 
 __all__.append(get_visible.__name__)
+
 
 def get_class(task_name: str):
     return _task_dictionary[task_name]
