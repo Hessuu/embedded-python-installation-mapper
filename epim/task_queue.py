@@ -18,15 +18,17 @@ class TaskQueue(LifoQueue):
         else:
             self.put(current_task)
 
-        #print(f"TaskQueue: {self}")
 
-    def run(self, target_task):
+    def run(self, target_task, force_rerun_dependencies: bool):
+
+        # We accomplish this by removing all sessions
+        if force_rerun_dependencies:
+            Application.clear_sessions()
 
         current_task = None
         while not self.empty():
             current_task = self.get()
-            
-            # TODO -f option
+
             # Current task should not be skipped.
             if current_task != target_task:
                 if Session.exists(current_task.name):
@@ -36,11 +38,11 @@ class TaskQueue(LifoQueue):
 
 
             current_task_instance = current_task()
-        
+
             print(f"#### Next task: {current_task.cli_name} ####")
-        
+
             current_task_instance.run()
-        
+
             print(f"#### Task Done: {current_task.cli_name} ####")
             print()
 

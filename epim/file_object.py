@@ -120,13 +120,13 @@ class FileObject(object):
 
     # Check if the file object has no actual or potential use in the installation.
     def is_useless(self):
-        for useless_file_path_match in settings.USELESS_FILE_PATH_MATCHES:
+        for useless_path_match in settings.USELESS_PATH_MATCHES:
             
             # Check our path and all our parent directories.
             all_paths = [self.path] + list(self.path.parents)
             
             for path in all_paths:
-                if path.match(useless_file_path_match):
+                if path.match(useless_path_match):
                     return True
         return False
 

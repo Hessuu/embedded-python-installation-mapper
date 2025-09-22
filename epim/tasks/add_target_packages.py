@@ -13,7 +13,7 @@ class AddTargetPackages(RemoteTask):
     def _run_locally(self, session):
         print(f"## Adding packages from target... ##")
 
-        session.python_packages.add_packages_on_target(settings.PACKAGE_DIRS_ON_TARGET)
+        session.python_packages.add_packages_on_target(settings.PACKAGE_DIR_PATHS_ON_TARGET)
 
         print(f"## Added packages from target. ##")
         print()

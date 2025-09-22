@@ -17,7 +17,7 @@ class MapTargetPythonDependencies(RemoteTask):
 
         python_module_mapper.find_all_dependencies(
             session.python_modules,
-            settings.ENTRY_POINTS_ON_TARGET,
+            settings.ENTRY_POINT_PATHS_ON_TARGET,
             settings.REMOTE_ROOT_PATH
             )
 

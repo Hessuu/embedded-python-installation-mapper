@@ -1,6 +1,6 @@
 # embedded-python-installation-mapper
 
-## Vocabulary
+## Terminology
 | Term    | Meaning |
 | -------- | ------- |
 | Host | The developer's or user's machine like a desktop computer or a laptop where the mapper is started from. |

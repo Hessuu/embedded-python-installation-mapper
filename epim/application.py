@@ -64,8 +64,6 @@ class Application(object):
         else:
             raise Exception(f"Invalid location: {location}")
 
-        # TODO: Clear if -f is set
-
     @classmethod
     def clear_sessions(cls):
         

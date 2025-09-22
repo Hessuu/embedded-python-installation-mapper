@@ -10,59 +10,60 @@ from epim.python_module_collection import PythonModuleCollection
 from epim.util.logging import *
 
 # For Python 3.10+
-STD_LIB_MODULES = sys.stdlib_module_names
+_STD_LIB_MODULE_NAMES = sys.stdlib_module_names
 
-def construct_search_paths(
-        additional_search_paths: list[str],
-        own_app_root_dir: Path
-        ):
+def _construct_search_path_strs(
+        additional_search_paths: list[Path],
+        own_root_dir: Path
+        ) -> list[str]:
 
-    search_paths = additional_search_paths
+    # Python handles modules search paths as strings.
+    search_path_strs = [str(path) for path in additional_search_paths]
 
     # Add system paths for broader search, but prioritize custom paths.
-    search_paths.extend(sys.path)
+    search_path_strs.extend(sys.path)
 
     # Remove our own directory from paths to prevent the scanner from being included.
-    own_dir_path = own_app_root_dir.resolve()
+    own_dir_path = own_root_dir.resolve()
     own_dir_path_str = str(own_dir_path)
-    if own_dir_path_str in search_paths:
-        search_paths.remove(own_dir_path_str)
+    if own_dir_path_str in search_path_strs:
+        search_path_strs.remove(own_dir_path_str)
 
-    print(f"Python search paths: {search_paths}")
+    print(f"Python search paths: {search_path_strs}")
 
-    return search_paths
+    return search_path_strs
 
 
 def find_all_available_modules(
         all_modules: PythonModuleCollection,
-        entry_points: list[str],
-        additional_search_paths: list[str],
+        entry_point_paths: list[Path],
+        additional_search_paths: list[Path],
         own_app_root_dir: Path
         ):
 
-    search_paths = construct_search_paths(additional_search_paths, own_app_root_dir)
+    # Combine PYTHONPATH to additional search paths, and exclude our own directory.
+    search_paths = _construct_search_path_strs(additional_search_paths, own_app_root_dir)
 
+    # Start from a clean table.
     all_modules.clear()
-    
-    
+
     print(f"Finding all available Python modules...")
-    
+
     print(f"Adding built-in modules...")
     built_in_module_count = 0
-    for built_in_module in STD_LIB_MODULES:
+    for built_in_module in _STD_LIB_MODULE_NAMES:
         all_modules[built_in_module] = PythonModule(None, built_in_module, search_paths, is_built_in=True)
         built_in_module_count += 1
     print(f"Added {built_in_module_count} built-in modules.")
 
 
     # Add all entry points to Python modules.
-    for entry_point in entry_points:
-        entry_point_path = Path(entry_point)
+    for entry_point_path in entry_point_paths:
         print(f"Adding entry point module: {entry_point_path}")
         all_modules[entry_point_path] = PythonModule(entry_point_path, None, search_paths, is_entry_point=True, importer=__name__)
 
     for search_path_str in search_paths:
- 
+
         search_path = Path(search_path_str)
         if not search_path.is_dir():
             # There is a zip file in Python path by default, ignore it.
@@ -82,7 +83,7 @@ def find_all_available_modules(
 
 def find_all_dependencies(
         all_modules: PythonModuleCollection,
-        entry_points: list[str],
+        entry_point_paths: list[Path],
         own_app_root_dir
         ):
 
@@ -95,8 +96,7 @@ def find_all_dependencies(
         sys.path.remove(str(own_app_root_dir))
         
     # Run dependency scan for each entry point.
-    for ep_str in entry_points:     
-        ep_path = Path(ep_str)
+    for ep_path in entry_point_paths:     
         
         # For extensionless Python files, we need to create a temporary copy with .py extension.
         # Pydeps insists on having an extension.
@@ -167,8 +167,8 @@ def find_all_dependencies(
                 
                 all_modules[dep_entry_path].importers.update(dep_entry["imported_by"])
                     
-                #print(all_modules[dep_entry_path])
             else:
+                # There is a large amount of 
                 #print(f"No path for: {dep_entry}")
                 pass
 

@@ -44,6 +44,7 @@ else:
 
     Application.initialize(Location.HOST)
 
+print("Argument configuration:")
 print(args)
 
 # Create and run task queue
@@ -58,4 +59,4 @@ else:
     target_task = visible_tasks[args.task]
     task_queue.populate(target_task, add_dependencies=True)
 
-task_queue.run(target_task)
+task_queue.run(target_task, args.force_rerun_dependencies)
