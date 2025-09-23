@@ -107,7 +107,7 @@ class Package(object):
         self.path = path
 
         self.package_type = package_type
-        
+
         self.found_on_target = None
 
         self.file_objects = None
@@ -158,7 +158,7 @@ class Package(object):
         return string
 
     @host_and_target
-    def populate_file_objects(self, all_file_objects):
+    def populate_file_objects(self):
         self.file_objects = {}
 
         for file_object_local_path in self.path.rglob("*"):
@@ -181,53 +181,59 @@ class Package(object):
                 case _:
                     raise Exception(f"Invalid current location: {Location.current}")
 
+            if not file_object.path in self.file_objects:
+                self.file_objects[file_object.path] = file_object
+
+    @host_only
+    def add_file_objects_to_python_installation(self, python_installation):
+        for file_object_path, file_object in self.file_objects.items():
             # Add to all file objects.
-            if not file_object.path in all_file_objects:
-                all_file_objects[file_object.path] = file_object
+            if not file_object_path in python_installation:
+                python_installation[file_object_path] = file_object
             else:
-                if file_object_local_path.is_dir():
+                if file_object.path_on_host.is_dir():
                     # Same directory may be in multiple packages, not an error.
                     # NOTE: We lose information on which packages a directory is from.
                     pass
                 else:
                     # For files it is an error to be found in multiple packages.
-                    raise Exception(f"Same file present in multiple packages: {file_object_local_path}")
+                    raise Exception(f"Same file present in multiple packages: {file_object.path_on_host}")
 
-            # Add to this package's file objects.
-            if not file_object_local_path.is_dir():
-                if not file_object.path in self.file_objects:
-                    self.file_objects[file_object.path] = file_object
-                else:
-                    # Same file absolutely cannot be twice in the same package.
-                    assert False
-            else:
-                # NOTE: We currently do not add directories to packages.
-                pass
+        
 
     @target_only
     def check_files_on_target(self):
         all_found = True
         all_not_found = True
+        directories_missing = False
         
+        # Check if all file objects for this package exist on target.
         for file_object in self.file_objects.values():
-            
-            # Existence
-            file_object.check_existence_on_target()
-            if file_object.found_on_target:
-                all_not_found = False
-                file_object.update_real_size_on_target()
-            else:
-                all_found = False
+
+                file_object.check_existence_on_target()
+                if file_object.found_on_target:
+
+                    # Directories can be part of multiple packages, so if we find one
+                    # for this package, it means nothing.
+                    if not file_object.file_object_type == FileObjectType.DIRECTORY:
+                        all_not_found = False
+
+                    file_object.update_real_size_on_target()
+                else:
+                    # Files or directories missing is always an issue.
+                    all_found = False
 
         # If both are false it means that some file objects are missing, which is an error.
         if not all_found and not all_not_found:
             raise Exception(f"Files missing in package: {self.name}")
-        
+
         # If both are true it means that there are no file objects.
         # These should have been filtered out, so raise error.
         if all_found and all_not_found:
             raise Exception(f"Package with no file objects: {self.name}")
         
+        # If directories are missing
+
         # Update own status
         if all_found:
             self.found_on_target = True
@@ -237,8 +243,6 @@ class Package(object):
             assert False
 
     def get_status(self):
-        file_object_statuses = set()
-
         total_files = 0
         
         # These together should add up to total files
@@ -250,6 +254,12 @@ class Package(object):
 
         # Count files
         for file_object in self.file_objects.values():
+
+            # Ignore directories, their usefulness is not handled,
+            # and they can be part of multiple packages.
+            if file_object.file_object_type == FileObjectType.DIRECTORY:
+                continue
+
             # All
             total_files += 1
             
@@ -264,6 +274,8 @@ class Package(object):
                     neutral_files += 1
                 case FileObjectStatus.NOT_FOUND:
                     not_found_files += 1
+                case FileObjectStatus.DIRECTORY:
+                    assert False
                 case FileObjectStatus.UNKNOWN:
                     neutral_files += 1
                 case _:
@@ -275,7 +287,7 @@ class Package(object):
         # File counting error?
         assert total_files == ok_files + neutral_files + problem_files + unknown_files + not_found_files
         # All files unknown?
-        assert not total_files == unknown_files
+        assert total_files != unknown_files 
         # Missing files? Could be user error.
         if not_found_files > 0 and not_found_files != total_files:
             raise Exception(f"Some files missing for package: {self.name}")
@@ -294,52 +306,7 @@ class Package(object):
             return PackageStatus.NOT_ON_DEVICE
 
 
-        '''
-        for file_object in self.file_objects.values():
-            file_object_statuses.add(file_object.status)
-            
-        # Package with some needed Python files and some unneeded.
-        if FileObjectStatus.REQUIRED in file_object_statuses and FileObjectStatus.NOT_REQUIRED in file_object_statuses:
-            allowed = {FileObjectStatus.REQUIRED, FileObjectStatus.NOT_REQUIRED, FileObjectStatus.NOT_HANDLED}
-            if file_object_statuses.issubset(allowed):
-                self.status = PackageStatus.PARTLY_REQUIRED
-                return
-
-        # Package with only needed Python files.
-        if FileObjectStatus.REQUIRED in file_object_statuses:
-            allowed = {FileObjectStatus.REQUIRED, FileObjectStatus.NOT_HANDLED}
-            if file_object_statuses.issubset(allowed):
-                self.status = PackageStatus.FULLY_REQUIRED
-                return
-
-        # Package with only unneeded Python files.
-        if FileObjectStatus.NOT_REQUIRED in file_object_statuses:
-            allowed = {FileObjectStatus.NOT_REQUIRED, FileObjectStatus.NOT_HANDLED}
-            if file_object_statuses.issubset(allowed):
-                self.status = PackageStatus.FULLY_NOT_REQUIRED
-                return
-
-        # Package only includes files we cannot process.
-        # TODO: is this actually an error?
-        if file_object_statuses == {FileObjectStatus.NOT_HANDLED}:
-            self.status = PackageStatus.FULLY_NOT_HANDLED
-            return
-
-        # Package is not on the device.
-        if FileObjectStatus.NOT_FOUND in file_object_statuses:
-            allowed = {FileObjectStatus.NOT_FOUND, FileObjectStatus.NOT_HANDLED}
-            if file_object_statuses.issubset(allowed):
-                self.status = PackageStatus.NOT_ON_DEVICE
-                return
-
-        # Package has not been processed yet by us.
-        if FileObjectStatus.UNINITIALIZED in file_object_statuses:
-            allowed = {FileObjectStatus.UNINITIALIZED, FileObjectStatus.NOT_HANDLED}
-            if file_object_statuses.issubset(allowed):
-                self.status = PackageStatus.UNINITIALIZED
-                return
-        '''
-        raise Exception(f"Unable to choose package status for: {self.name} with statuses: {file_object_statuses}")
+        raise Exception(f"Unable to choose package status for: {self.name}")
 
 ## PRIVATE ##
 

@@ -1,3 +1,4 @@
+import sysconfig
 from pathlib import Path
 
 '''
@@ -115,4 +116,25 @@ USELESS_PATH_MATCHES = [
     "setup.cfg",
     "setup.py",
     ".travis.yml",
+]
+
+# Everything inside these directories on the target will be added to Python installation manifest.
+# These should always include the Python libdir(s) and incdir(s).
+# NOTE: As these are dynamic paths, they should not be accessed on the host.
+PYTHON_INSTALLATION_MANIFEST_ADDITIONAL_DIRECTORIES_ON_TARGET = [
+    Path(sysconfig.get_path('stdlib')),
+    Path(sysconfig.get_path('platstdlib')),
+    Path(sysconfig.get_path('include')),
+    Path(sysconfig.get_path('platinclude')),
+]
+
+# Ignore these file objects in Python installation manifest.
+# This removes them from the file object list and prevents them from contributing to installation size.
+# These should include directories that are part of Python file paths that are also common system directories.
+PYTHON_INSTALLATION_MANIFEST_FILE_OBJECTS_TO_IGNORE = [
+    Path("/usr"),
+    Path("/usr/bin"),
+    Path("/usr/include"),
+    Path("/usr/lib"),
+    Path("/usr/lib/systemd"),
 ]

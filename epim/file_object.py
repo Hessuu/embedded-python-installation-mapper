@@ -19,6 +19,7 @@ class FileObjectStatus(Enum):
     USELESS = "USELESS"             # File has been marked as useless due to type.
     NOT_HANDLED = "NOT_HANDLED"     # We can't determine if this file is used or not, due to its type.
     NOT_FOUND = "NOT_FOUND"         # File does not seem to be on the device.
+    DIRECTORY = "DIRECTORY"         # Directories are not handled, but need special arrangements.
     UNKNOWN = "UNKNOWN"             # We don't know what to do with this file.
 
 
@@ -39,7 +40,6 @@ class FileObject(object):
             return True
         else:
             return False
-
 
 #############
 ## METHODS ##
@@ -68,18 +68,21 @@ class FileObject(object):
         # The corresponding module (i.e., Python file) found on target
         self.python_module = None
 
-
     def get_status(self):
         # Most important statuses returned first to give them priority.
 
-        # If file object is not on device, nothing else matters.
+        # Directories need to always be flagged as such, and no other states considered.
+        if self.file_object_type == FileObjectType.DIRECTORY:
+            return FileObjectStatus.DIRECTORY
+
+        # If file is not on device, nothing else matters.
         if not self.found_on_target:
             return FileObjectStatus.NOT_FOUND
         
         # If file is marked as useless, it takes priority.
         if self.is_useless():
             return FileObjectStatus.USELESS
-        
+
         # Python modules.
         if self.python_module:
             if self.python_module.required:
@@ -93,7 +96,6 @@ class FileObject(object):
 
         # Unknown if nothing else matches. This will include random text files, images, etc.
         return FileObjectStatus.UNKNOWN
-
 
     def get_string(self, file_object_size_type: FileObjectSizeType):
 
@@ -130,7 +132,6 @@ class FileObject(object):
                     return True
         return False
 
-
     @target_only
     def check_existence_on_target(self):
         if not self.path.exists():
@@ -148,7 +149,7 @@ class FileObject(object):
 
             # On target, measure size from path on the target.
             case Location.TARGET:
-                self.theoretical_size(self.path)
+                self.theoretical_size.measure(self.path)
 
             case _:
                 assert False
@@ -193,9 +194,11 @@ class FileObject(object):
             case FileObjectStatus.USELESS:
                 return ColorString.dark_red(string)
             case FileObjectStatus.NOT_HANDLED:
-                return string
+                return ColorString.white(string)
             case FileObjectStatus.NOT_FOUND:
                 return ColorString.red(string)
+            case FileObjectStatus.DIRECTORY:
+                return ColorString.gray(string)
             case FileObjectStatus.UNKNOWN:
                 return ColorString.purple(string)
             case _:

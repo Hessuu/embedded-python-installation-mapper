@@ -25,7 +25,7 @@ class PackageCollection(collections.UserDict):
         return string
 
     @host_only
-    def populate_on_host(self, yocto_target_work_dirs: [Path], all_file_objects):
+    def populate_on_host(self, yocto_target_work_dirs: [Path]):
         for work_dir in yocto_target_work_dirs:
             assert(work_dir.exists())
 
@@ -34,7 +34,7 @@ class PackageCollection(collections.UserDict):
                     if package_dir.is_dir():
                         package = Package(package_dir.name, recipe_dir.name, package_dir, PackageType.HOST_AND_TARGET)
 
-                        package.populate_file_objects(all_file_objects)
+                        package.populate_file_objects()
                         
                         if package.is_python_package:
                             self[package.path] = package
@@ -56,16 +56,20 @@ class PackageCollection(collections.UserDict):
     
     @host_and_target        
     def remove_packages_not_found_on_target(self):
-        for package_path, package in self.items():
-            print(f"{package.name} {package.status}")
-            assert package.status != PackageStatus.UNINITIALIZED
+        for package_path in list(self.keys()):
+            package = self[package_path]
 
-            if package.status == PackageStatus.NOT_ON_DEVICE:
-                print(f"Filtering out package: {package.name}")
+            package_status = package.get_status()
+            print(f"{package.name} {package_status}")
+
+            if package_status == PackageStatus.NOT_ON_DEVICE:
+                print(f"    Filtering out package: {package.name}")
+
+                # Remove it from packages.
                 self.pop(package_path)
-        
+
     @target_only
-    def update_package_statuses_on_target(self):
+    def check_packages_on_target(self):
         for package in self.values():
             package.check_files_on_target()
 

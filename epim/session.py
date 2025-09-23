@@ -16,7 +16,11 @@ class Session(object):
     def __init__(self):
         self.python_packages = PackageCollection()
         self.python_modules = PythonModuleCollection()
-        self.all_file_objects = {}
+        
+        # Contains all Python file objects found from Python Yocto packages.
+        self.python_installation = {}
+        # Contains Python file objects found from target that were not in Yocto packages.
+        self.python_installation_from_target = {}
 
 
 ## PUBLIC ##  

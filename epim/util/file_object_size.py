@@ -20,6 +20,7 @@ class Size():
     @property
     def bytes(self):
         return self._bytes
+
     @property
     def type(self):
         return self.__type
@@ -27,6 +28,7 @@ class Size():
     def __init__(self, bytes: int, type: FileObjectSizeType):
         self._bytes = bytes
         self.__type = type
+
     def format(self, align: bool = False, unit: SizeUnit = None):
         size = self._bytes
 
@@ -54,16 +56,31 @@ class Size():
 
         return f"{size_type_string} {size_string} {unit_string}"
     
+    '''
+    With operators, it should not be allowed to do calculations between
+    different size types and object types in general.
+    '''
+    # Implements == operator.
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self._bytes == other.bytes
+        else:
+            return NotImplemented
+    
+    # Implements + operator.
     def __add__(self, other):
-        # Not allowed to mix between different size types.
-        if   isinstance(other, self.__class__):
-            return self.__class__(self.bytes + other.bytes)
-        
+        if isinstance(other, self.__class__):
+            return self.__class__(self._bytes + other.bytes)
         else:
             return NotImplemented
 
-    def __radd__(self, other):
-        return self.__add__(other)
+    # Implements += operator.
+    def __iadd__(self, other):
+        if isinstance(other, self.__class__):
+            self._bytes += other.bytes
+            return self
+        else:
+            return NotImplemented
 
 
 class RealSize(Size):
