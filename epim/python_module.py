@@ -91,4 +91,4 @@ class PythonModule(object):
             self.importers.add(importer)
 
     def __str__(self):
-        return "(%s , %s , %s , %s)" % (self.full_name, format_size(self.real_size), self.path, sorted(self.importers))
+        return "(%s , %s , %s , %s)" % (self.full_name, self.real_size.format(), self.path, sorted(self.importers))

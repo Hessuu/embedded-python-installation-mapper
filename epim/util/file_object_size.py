@@ -89,7 +89,7 @@ class RealSize(Size):
     
     @target_only
     def measure(self, path: Path):
-        self._bytes = path.stat(follow_symlinks=False).st_blocks * 512
+        self._bytes = path.lstat().st_blocks * 512
 
 
 class TheoreticalSize(Size):
@@ -99,7 +99,7 @@ class TheoreticalSize(Size):
     # TODO: Is lstat better than stat for file sizes?
     @host_and_target
     def measure(self, path: Path):
-        self._bytes = path.stat(follow_symlinks=False).st_size
+        self._bytes = path.lstat().st_size
 
 
 '''

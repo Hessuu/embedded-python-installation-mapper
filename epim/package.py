@@ -160,26 +160,24 @@ class Package(object):
     @host_and_target
     def populate_file_objects(self):
         self.file_objects = {}
-
         for file_object_local_path in self.path.rglob("*"):
 
-            match Application.location:
-                # On host, remove package's directory from path.
-                case Location.HOST:
-                    assert self.package_type == PackageType.HOST_AND_TARGET
+            # On host, remove package's directory from path.
+            if Application.location == Location.HOST:
+                assert self.package_type == PackageType.HOST_AND_TARGET
 
-                    file_object_target_path = "/" / file_object_local_path.relative_to(self.path)
-                    file_object = FileObject(file_object_target_path, file_object_local_path)
+                file_object_target_path = "/" / file_object_local_path.relative_to(self.path)
+                file_object = FileObject(file_object_target_path, file_object_local_path)
 
-                # On target, path is used as-is.
-                case Location.TARGET:
-                    assert self.package_type == PackageType.TARGET_ONLY
-                    
-                    file_object_target_path = "/" / file_object_local_path
-                    file_object = FileObject(file_object_target_path, None)
+            # On target, path is used as-is.
+            elif Application.location == Location.TARGET:
+                assert self.package_type == PackageType.TARGET_ONLY
 
-                case _:
-                    raise Exception(f"Invalid current location: {Location.current}")
+                file_object_target_path = "/" / file_object_local_path
+                file_object = FileObject(file_object_target_path, None)
+
+            else:
+                raise Exception(f"Invalid current location: {Location.current}")
 
             if not file_object.path in self.file_objects:
                 self.file_objects[file_object.path] = file_object
@@ -209,19 +207,20 @@ class Package(object):
         
         # Check if all file objects for this package exist on target.
         for file_object in self.file_objects.values():
+            
+            file_object.check_existence_on_target()
+            if file_object.found_on_target:
 
-                file_object.check_existence_on_target()
-                if file_object.found_on_target:
+                # Directories can be part of multiple packages, so if we find one
+                # for this package, it means nothing.
+                if not file_object.file_object_type == FileObjectType.DIRECTORY:
+                    all_not_found = False
 
-                    # Directories can be part of multiple packages, so if we find one
-                    # for this package, it means nothing.
-                    if not file_object.file_object_type == FileObjectType.DIRECTORY:
-                        all_not_found = False
+                file_object.update_real_size_on_target()
+            else:
 
-                    file_object.update_real_size_on_target()
-                else:
-                    # Files or directories missing is always an issue.
-                    all_found = False
+                # Files or directories missing is always an issue.
+                all_found = False
 
         # If both are false it means that some file objects are missing, which is an error.
         if not all_found and not all_not_found:
@@ -262,24 +261,24 @@ class Package(object):
 
             # All
             total_files += 1
-            
-            match file_object.get_status():
-                case FileObjectStatus.REQUIRED:
-                    ok_files += 1
-                case FileObjectStatus.NOT_REQUIRED:
-                    problem_files += 1
-                case FileObjectStatus.USELESS:
-                    problem_files += 1
-                case FileObjectStatus.NOT_HANDLED:
-                    neutral_files += 1
-                case FileObjectStatus.NOT_FOUND:
-                    not_found_files += 1
-                case FileObjectStatus.DIRECTORY:
-                    assert False
-                case FileObjectStatus.UNKNOWN:
-                    neutral_files += 1
-                case _:
-                    raise Exception(f"Invalid file status for: {file_object.path}")
+
+            status = file_object.get_status()
+            if status == FileObjectStatus.REQUIRED:
+                ok_files += 1
+            elif status == FileObjectStatus.NOT_REQUIRED:
+                problem_files += 1
+            elif status == FileObjectStatus.USELESS:
+                problem_files += 1
+            elif status == FileObjectStatus.NOT_HANDLED:
+                neutral_files += 1
+            elif status == FileObjectStatus.NOT_FOUND:
+                not_found_files += 1
+            elif status == FileObjectStatus.DIRECTORY:
+                assert False
+            elif status == FileObjectStatus.UNKNOWN:
+                neutral_files += 1
+            else:
+                raise Exception(f"Invalid file status for: {file_object.path}")
 
         # Check for errors
         # Empty?
@@ -312,15 +311,14 @@ class Package(object):
 
     def __get_status_color_string(self, status, string):
         
-        match status:
-            case PackageStatus.OK:
-                return ColorString.green(string)
-            case PackageStatus.SOME_REMOVABLE:
-                return ColorString.yellow(string)
-            case PackageStatus.FULLY_REMOVABLE:
-                return ColorString.red(string)
-            case PackageStatus.NOT_ON_DEVICE:
-                return string
-            case _:
-                raise Exception(f"Unable to get package status color for: {self.name} with statuses: {status}")
+        if status == PackageStatus.OK:
+            return ColorString.green(string)
+        elif status == PackageStatus.SOME_REMOVABLE:
+            return ColorString.yellow(string)
+        elif status == PackageStatus.FULLY_REMOVABLE:
+            return ColorString.red(string)
+        elif status == PackageStatus.NOT_ON_DEVICE:
+            return string
+        else:
+            raise Exception(f"Unable to get package status color for: {self.name} with statuses: {status}")
             

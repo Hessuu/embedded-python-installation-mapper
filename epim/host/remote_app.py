@@ -11,7 +11,7 @@ sync_done = False
 app_components = [
     "main.py",
     "settings.py",
-    "known_imports.py",
+    "known_imports",
     "epim",
 ]
 

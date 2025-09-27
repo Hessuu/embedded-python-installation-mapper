@@ -32,8 +32,13 @@ class FileObject(object):
 
     @property
     def is_python_file(self):
-        return is_python_file(self.path, ignore_pycs=False)
-        
+        if Application.location == Location.HOST:
+            return is_python_file(self.path_on_host, ignore_pycs=False)
+        elif Application.location == Location.TARGET:
+            return is_python_file(self.path, ignore_pycs=False)
+        else:
+            assert False
+
     @property
     def not_handled(self):
         if self.path.suffix in settings.NOT_HANDLED_FILE_TYPES:
@@ -100,13 +105,12 @@ class FileObject(object):
     def get_string(self, file_object_size_type: FileObjectSizeType):
 
         # Get the proper size to use.
-        match file_object_size_type:
-            case FileObjectSizeType.REAL_SIZE:
-                size = self.real_size
-            case FileObjectSizeType.THEORETICAL_SIZE:    
-                size = self.theoretical_size
-            case _:
-                assert False
+        if file_object_size_type == FileObjectSizeType.REAL_SIZE:
+            size = self.real_size
+        elif file_object_size_type == FileObjectSizeType.THEORETICAL_SIZE:    
+            size = self.theoretical_size
+        else:
+            assert False
         size_string = size.format(align=True)
 
         # Set up the string-
@@ -134,25 +138,31 @@ class FileObject(object):
 
     @target_only
     def check_existence_on_target(self):
+        # exists() won't work for symlinks.
+        if self.path.is_symlink():
+            self.found_on_target = True
+            return
+
         if not self.path.exists():
             self.found_on_target = False
+            return
         else:
             self.found_on_target = True
+            return
 
     @host_and_target
     def update_theoretical_size(self):
 
-        match Application.location:
-            # On host, measure size from path on host (Yocto directory).
-            case Location.HOST:
-                self.theoretical_size.measure(self.path_on_host)
+        # On host, measure size from path on host (Yocto directory).
+        if Application.location == Location.HOST:
+            self.theoretical_size.measure(self.path_on_host)
 
-            # On target, measure size from path on the target.
-            case Location.TARGET:
-                self.theoretical_size.measure(self.path)
+        # On target, measure size from path on the target.
+        elif Application.location == Location.TARGET:
+            self.theoretical_size.measure(self.path)
 
-            case _:
-                assert False
+        else:
+            assert False
 
     @target_only
     def update_real_size_on_target(self):
@@ -169,50 +179,51 @@ class FileObject(object):
     # TODO: Use
     # Highlight problems to the user.
     def __get_problem_highlighting_string(self):
-        match self.get_status():
-            case FileObjectStatus.REQUIRED:
-                return ""
-            case FileObjectStatus.NOT_REQUIRED:
-                return "NOTE: "
-            case FileObjectStatus.NOT_HANDLED:
-                return ""
-            case FileObjectStatus.NOT_FOUND:
-                return "ERROR: "
-            case FileObjectStatus.UNINITIALIZED:
-                #TODO: Not an error when ran locally to print Yocto packages.
-                return "ERROR: "
-            case _:
-                assert False
+        status = self.get_status()
+
+        if status == FileObjectStatus.REQUIRED:
+            return ""
+        elif status == FileObjectStatus.NOT_REQUIRED:
+            return "NOTE: "
+        elif status == FileObjectStatus.NOT_HANDLED:
+            return ""
+        elif status == FileObjectStatus.NOT_FOUND:
+            return "ERROR: "
+        elif status == FileObjectStatus.UNINITIALIZED:
+            #TODO: Not an error when ran locally to print Yocto packages.
+            return "ERROR: "
+        else:
+            assert False
 
     # Descriptive color for the file's status.
     def __colorize_status_string(self, string):
-        match self.get_status():
-            case FileObjectStatus.REQUIRED:
-                return ColorString.green(string)
-            case FileObjectStatus.NOT_REQUIRED:
-                return ColorString.red(string)
-            case FileObjectStatus.USELESS:
-                return ColorString.dark_red(string)
-            case FileObjectStatus.NOT_HANDLED:
-                return ColorString.white(string)
-            case FileObjectStatus.NOT_FOUND:
-                return ColorString.red(string)
-            case FileObjectStatus.DIRECTORY:
-                return ColorString.gray(string)
-            case FileObjectStatus.UNKNOWN:
-                return ColorString.purple(string)
-            case _:
-                assert False
+        status = self.get_status()
+
+        if status == FileObjectStatus.REQUIRED:
+            return ColorString.green(string)
+        elif status == FileObjectStatus.NOT_REQUIRED:
+            return ColorString.red(string)
+        elif status == FileObjectStatus.USELESS:
+            return ColorString.dark_red(string)
+        elif status == FileObjectStatus.NOT_HANDLED:
+            return ColorString.white(string)
+        elif status == FileObjectStatus.NOT_FOUND:
+            return ColorString.red(string)
+        elif status == FileObjectStatus.DIRECTORY:
+            return ColorString.gray(string)
+        elif status == FileObjectStatus.UNKNOWN:
+            return ColorString.purple(string)
+        else:
+            assert False
 
     @host_and_target
     def __get_file_object_type(self):
-        match Application.location:
-            case Location.HOST:
-                path_to_check = self.path_on_host
-            case Location.TARGET:
-                path_to_check = self.path
-            case _:
-                assert False
+        if Application.location == Location.HOST:
+            path_to_check = self.path_on_host
+        elif Application.location == Location.TARGET:
+            path_to_check = self.path
+        else:
+            assert False
 
         if path_to_check.is_dir():
             return FileObjectType.DIRECTORY

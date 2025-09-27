@@ -45,15 +45,14 @@ class PythonInstallationReport:
             self.file_types_encountered.add(file_object_type)
 
             # Add size to groups by type
-            match file_object_type:
-                case ".py":
-                    self.py_files_size += file_object_size
-                case ".pyc":
-                    self.pyc_files_size += file_object_size
-                case ".so":
-                    self.so_files_size += file_object_size
-                case _:
-                    self.other_files_size += file_object_size
+            if file_object_type == ".py":
+                self.py_files_size += file_object_size
+            elif file_object_type == ".pyc":
+                self.pyc_files_size += file_object_size
+            elif file_object_type == ".so":
+                self.so_files_size += file_object_size
+            else:
+                self.other_files_size += file_object_size
 
         # Check for by type size errors.        
         assert(self.total_size ==
@@ -65,25 +64,24 @@ class PythonInstallationReport:
         )
 
         # Add size to groups by status
-        match file_object_status:
-            case FileObjectStatus.REQUIRED:
-                self.required_size += file_object_size
-            case FileObjectStatus.NOT_REQUIRED:
-                self.not_required_size += file_object_size
-            case FileObjectStatus.USELESS:
-                self.useless_size += file_object_size
-            case FileObjectStatus.NOT_HANDLED:
-                self.not_handled_size += file_object_size
-            case FileObjectStatus.NOT_FOUND:
-                self.not_found_size += file_object_size
-            case FileObjectStatus.DIRECTORY:
-                # Directories already handled.
-                pass
-            case FileObjectStatus.UNKNOWN:
-                self.unknown_size += file_object_size
-            case _:
-                assert False
-        
+        if file_object_status == FileObjectStatus.REQUIRED:
+            self.required_size += file_object_size
+        elif file_object_status == FileObjectStatus.NOT_REQUIRED:
+            self.not_required_size += file_object_size
+        elif file_object_status == FileObjectStatus.USELESS:
+            self.useless_size += file_object_size
+        elif file_object_status == FileObjectStatus.NOT_HANDLED:
+            self.not_handled_size += file_object_size
+        elif file_object_status == FileObjectStatus.NOT_FOUND:
+            self.not_found_size += file_object_size
+        elif file_object_status == FileObjectStatus.DIRECTORY:
+            # Directories already handled.
+            pass
+        elif file_object_status == FileObjectStatus.UNKNOWN:
+            self.unknown_size += file_object_size
+        else:
+            assert False
+
         # Check for by status size errors.
         assert(self.total_size ==
             self.directories_size +

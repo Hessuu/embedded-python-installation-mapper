@@ -35,7 +35,6 @@ class PackageCollection(collections.UserDict):
                         package = Package(package_dir.name, recipe_dir.name, package_dir, PackageType.HOST_AND_TARGET)
 
                         package.populate_file_objects()
-                        
                         if package.is_python_package:
                             self[package.path] = package
                         else:

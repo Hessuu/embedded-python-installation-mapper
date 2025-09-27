@@ -37,7 +37,7 @@ def __is_importable_module(path: Path):
         module_name = path.parent.name
 
     spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec != None:
+    if spec is not None and spec.loader is not None:
         #print(f"spec: {spec}")
         return True
 
@@ -48,16 +48,15 @@ def is_python_file(path: Path, ignore_pycs: bool):
 
         # Try to rule out files with fast ways to avoid the slow ways.
         # We have to trust that these file extensions have not been used on non-Python files.
-        match path.suffix:
-            case ".py":
+        if path.suffix == ".py":
+            return True
+        elif path.suffix == ".pyc":
+            # Ignore pycs. In module terms they are duplicates of .py-files.
+            if ignore_pycs:
+                return False
+            else:
                 return True
-            case ".pyc":
-                # Ignore pycs. In module terms they are duplicates of .py-files.
-                if ignore_pycs:
-                    return False
-                else:
-                    return True
-        
+
         # Slow ways.
         if __is_importable_module(path):
             return True
