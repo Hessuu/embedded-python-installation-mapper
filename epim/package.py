@@ -25,6 +25,7 @@ class Package(object):
 ############################
 
 ## PUBLIC ##
+
     @property
     def theoretical_size(self) -> TheoreticalSize:
         theoretical_size = TheoreticalSize(0)
@@ -38,22 +39,27 @@ class Package(object):
         real_size = RealSize(0)
 
         for file_object in self.file_objects.values():
-            real_size += file_object.real_size
+            # Common to error during development, print some info.
+            try:
+                real_size += file_object.real_size
+            except Exception as e:
+                print(f"Real size not measured in package {self.name} for file {file_object.path}")
+                raise e
         return real_size
 
     @property
     def is_python_package(self) -> bool:
-        ''' Check common disqualifiers. '''
+        # Check common disqualifiers.
         if not self.__is_proper_package:
             return False
 
-        ''' We trust that every package starting 
-        with "python" is a Python package. '''
-        if self.path.name.startswith("python"):
+        # We trust that every package and recipe containing  "python" is a Python package.
+        if "python" in self.name:
+            return True
+        if "python" in self.recipe_name:
             return True
 
-        ''' Packages can also be Python packages
-        if they contain Python files. '''
+        # Packages can also be Python packages if they contain Python files.
         if self.__contains_python_files:
             return True
 
@@ -75,6 +81,7 @@ class Package(object):
             self.path.match("*-doc") or
             self.path.match("*-lic") or
             self.path.match("*-locale") or
+            self.path.match("*-ptest") or
             self.path.match("*-src") or
             self.path.match("*-staticdev") or
             self.path.match("*-unneeded") or
@@ -116,10 +123,16 @@ class Package(object):
         status = self.get_status()
 
         # Get the proper size to use.
-        if self.found_on_target == False:
+        if self.found_on_target == None:
             size = self.theoretical_size
-        else:
+        elif self.found_on_target == False:
+            size = self.theoretical_size
+
+        elif self.found_on_target == True:
             size = self.real_size
+        else:
+            assert False
+
         size_string = size.format(align=False)
 
         # Add first row for basic info.
@@ -130,17 +143,17 @@ class Package(object):
 
         # Get strings for our files, if our package is on the target.
         files_string = ""
-        if status == PackageStatus.NOT_ON_DEVICE:
+        if self.found_on_target == False: # None does not count!
             status_string += " - (file objects hidden)"
         else:
             pycache_found = False
 
-            for file in self.file_objects.values():
-                if file.path.match("*/__pycache__/*"):
+            for file_object_path, file_object in sorted(self.file_objects.items()):
+                if file_object_path.match("*/__pycache__/*"):
                     pycache_found = True
                 else:
-                    # File objects need to print the same file size type.
-                    files_string += "    " + file.get_string(size.type) + "\n"
+                    # File objects need to print the same file object size type.
+                    files_string += "    " + file_object.get_string(size.type) + "\n"
 
             # Don't show pycache files to improve readability.
             if pycache_found:
@@ -197,17 +210,14 @@ class Package(object):
                     # For files it is an error to be found in multiple packages.
                     raise Exception(f"Same file present in multiple packages: {file_object.path_on_host}")
 
-        
-
     @target_only
-    def check_files_on_target(self):
+    def check_existences_on_target(self):
         all_found = True
         all_not_found = True
-        directories_missing = False
-        
+
         # Check if all file objects for this package exist on target.
         for file_object in self.file_objects.values():
-            
+
             file_object.check_existence_on_target()
             if file_object.found_on_target:
 
@@ -216,9 +226,7 @@ class Package(object):
                 if not file_object.file_object_type == FileObjectType.DIRECTORY:
                     all_not_found = False
 
-                file_object.update_real_size_on_target()
             else:
-
                 # Files or directories missing is always an issue.
                 all_found = False
 
@@ -230,8 +238,6 @@ class Package(object):
         # These should have been filtered out, so raise error.
         if all_found and all_not_found:
             raise Exception(f"Package with no file objects: {self.name}")
-        
-        # If directories are missing
 
         # Update own status
         if all_found:
@@ -243,7 +249,7 @@ class Package(object):
 
     def get_status(self):
         total_files = 0
-        
+
         # These together should add up to total files
         ok_files = 0
         neutral_files = 0
@@ -262,17 +268,22 @@ class Package(object):
             # All
             total_files += 1
 
+            # File existence
+            if file_object.found_on_target != True:
+                not_found_files += 1
+
+            # Statuses
             status = file_object.get_status()
-            if status == FileObjectStatus.REQUIRED:
+            if status == FileObjectStatus.USEFUL:
                 ok_files += 1
-            elif status == FileObjectStatus.NOT_REQUIRED:
+            elif status == FileObjectStatus.REQUIRED_MODULE:
+                ok_files += 1
+            elif status == FileObjectStatus.NOT_REQUIRED_MODULE:
                 problem_files += 1
             elif status == FileObjectStatus.USELESS:
                 problem_files += 1
             elif status == FileObjectStatus.NOT_HANDLED:
                 neutral_files += 1
-            elif status == FileObjectStatus.NOT_FOUND:
-                not_found_files += 1
             elif status == FileObjectStatus.DIRECTORY:
                 assert False
             elif status == FileObjectStatus.UNKNOWN:
@@ -280,18 +291,22 @@ class Package(object):
             else:
                 raise Exception(f"Invalid file status for: {file_object.path}")
 
-        # Check for errors
+        ## Check for errors ##
         # Empty?
         assert total_files > 0
         # File counting error?
-        assert total_files == ok_files + neutral_files + problem_files + unknown_files + not_found_files
+        assert total_files == ok_files + neutral_files + problem_files + unknown_files
         # All files unknown?
         assert total_files != unknown_files 
         # Missing files? Could be user error.
         if not_found_files > 0 and not_found_files != total_files:
             raise Exception(f"Some files missing for package: {self.name}")
 
-        # Statuses, no particular order should be needed.
+        ## Statuses ##
+        # Not-on-device takes precedence
+        if total_files == not_found_files:
+            return PackageStatus.NOT_ON_DEVICE
+
         if total_files == ok_files + neutral_files:
             return PackageStatus.OK
 
@@ -301,16 +316,13 @@ class Package(object):
         if total_files == problem_files + neutral_files:
             return PackageStatus.FULLY_REMOVABLE
 
-        if total_files == not_found_files:
-            return PackageStatus.NOT_ON_DEVICE
-
 
         raise Exception(f"Unable to choose package status for: {self.name}")
 
 ## PRIVATE ##
 
     def __get_status_color_string(self, status, string):
-        
+
         if status == PackageStatus.OK:
             return ColorString.green(string)
         elif status == PackageStatus.SOME_REMOVABLE:

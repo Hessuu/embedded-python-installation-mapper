@@ -9,7 +9,7 @@ class PrintPythonPackageReport(LocalTask):
     def _run_locally(self, session):
         print(f"## Printing Yocto package report... ##")
 
-        print(session.python_packages.get_string())
+        print(session.python_installation.python_packages.get_string())
 
         print(f"## Printed Yocto package report. ##")
         print()

@@ -12,7 +12,7 @@ class CheckTargetFiles(RemoteTask):
     def _run_locally(self, session):
         print(f"## Checking Python files on target... ##")
 
-        session.python_packages.check_packages_on_target()
+        session.all_python_packages.check_existences_on_target()
 
         print(f"## Checked Python files on target. ##")
         print()

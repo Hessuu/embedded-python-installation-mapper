@@ -3,8 +3,7 @@ from pickle import Pickler, Unpickler
 import settings
 from epim.application import *
 from epim.util.logging import *
-from epim.package_collection import *
-from epim.python_module_collection import *
+from epim.python_installation import *
 from epim.util.decorators import *
 
 
@@ -14,14 +13,12 @@ class Session(object):
     __SESSION_FILE_SUFFIX = ".session"
 
     def __init__(self):
-        self.python_packages = PackageCollection()
-        self.python_modules = PythonModuleCollection()
         
-        # Contains all Python file objects found from Python Yocto packages.
-        self.python_installation = {}
-        # Contains Python file objects found from target that were not in Yocto packages.
-        self.python_installation_from_target = {}
+        # Data on the installation on the target.
+        self.python_installation = PythonInstallation()
 
+        # All Yocto package identified as Python packages, regardless of existing on target.
+        self.all_python_packages = PackageCollection()
 
 ## PUBLIC ##  
 

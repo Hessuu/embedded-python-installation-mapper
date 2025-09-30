@@ -1,4 +1,5 @@
 from epim.file_object import *
+from epim.util.color_string import *
 from epim.util.file_object_size import *
 from epim.util.logging import *
 
@@ -21,8 +22,9 @@ class PythonInstallationReport:
         self.other_files_size = RealSize(0)
         
         # By file object status
-        self.required_size = RealSize(0)
-        self.not_required_size = RealSize(0)
+        self.useful_size = RealSize(0)
+        self.required_modules_size = RealSize(0)
+        self.not_required_modules_size = RealSize(0)
         self.useless_size = RealSize(0)
         self.not_handled_size = RealSize(0)
         self.not_found_size = RealSize(0)
@@ -31,7 +33,7 @@ class PythonInstallationReport:
     def add_file_object_data(self, file_object):
         file_object_path = file_object.path
         file_object_size = file_object.real_size
-        file_object_type = file_object_path.suffix
+        file_object_type = "".join(file_object_path.suffixes) # Get the full type.
         file_object_status = file_object.get_status()
 
         self.total_size += file_object_size
@@ -47,9 +49,9 @@ class PythonInstallationReport:
             # Add size to groups by type
             if file_object_type == ".py":
                 self.py_files_size += file_object_size
-            elif file_object_type == ".pyc":
+            elif ".pyc" in file_object_type:
                 self.pyc_files_size += file_object_size
-            elif file_object_type == ".so":
+            elif ".so" in file_object_type:
                 self.so_files_size += file_object_size
             else:
                 self.other_files_size += file_object_size
@@ -64,16 +66,16 @@ class PythonInstallationReport:
         )
 
         # Add size to groups by status
-        if file_object_status == FileObjectStatus.REQUIRED:
-            self.required_size += file_object_size
-        elif file_object_status == FileObjectStatus.NOT_REQUIRED:
-            self.not_required_size += file_object_size
+        if file_object_status == FileObjectStatus.USEFUL:
+            self.useful_size += file_object_size
+        elif file_object_status == FileObjectStatus.REQUIRED_MODULE:
+            self.required_modules_size += file_object_size
+        elif file_object_status == FileObjectStatus.NOT_REQUIRED_MODULE:
+            self.not_required_modules_size += file_object_size
         elif file_object_status == FileObjectStatus.USELESS:
             self.useless_size += file_object_size
         elif file_object_status == FileObjectStatus.NOT_HANDLED:
             self.not_handled_size += file_object_size
-        elif file_object_status == FileObjectStatus.NOT_FOUND:
-            self.not_found_size += file_object_size
         elif file_object_status == FileObjectStatus.DIRECTORY:
             # Directories already handled.
             pass
@@ -85,11 +87,11 @@ class PythonInstallationReport:
         # Check for by status size errors.
         assert(self.total_size ==
             self.directories_size +
-            self.required_size +
-            self.not_required_size +
+            self.useful_size +
+            self.required_modules_size +
+            self.not_required_modules_size +
             self.useless_size +
             self.not_handled_size +
-            self.not_found_size +
             self.unknown_size
         )
         
@@ -108,19 +110,22 @@ class PythonInstallationReport:
         print()
         print(f"Total:       {self.total_size.format(align=True)} | {self.total_size.format(unit=SizeUnit.KIB)}")
         print()
+        print(f"# Size by type #")
         print(f".py files:   {self.py_files_size.format(align=True)} | {self.py_files_size.format(unit=SizeUnit.KIB)}")
         print(f".pyc files:  {self.pyc_files_size.format(align=True)} | {self.pyc_files_size.format(unit=SizeUnit.KIB)}")
         print(f".so files:   {self.so_files_size.format(align=True)} | {self.so_files_size.format(unit=SizeUnit.KIB)}")
         print(f"Directories: {self.directories_size.format(align=True)} | {self.directories_size.format(unit=SizeUnit.KIB)}")
         print(f"Other files: {self.other_files_size.format(align=True)} | {self.other_files_size.format(unit=SizeUnit.KIB)}")
         print()
-        # TODO: color code these.
-        print(f"Required files:     {self.required_size.format(align=True)} | {self.required_size.format(unit=SizeUnit.KIB)}")
-        print(f"Not required files: {self.not_required_size.format(align=True)} | {self.not_required_size.format(unit=SizeUnit.KIB)}")
-        print(f"Useless files:      {self.useless_size.format(align=True)} | {self.useless_size.format(unit=SizeUnit.KIB)}")
-        print(f"Not handled files:  {self.not_handled_size.format(align=True)} | {self.not_handled_size.format(unit=SizeUnit.KIB)}")
+        print()
+        print(f"# Size by status #")
+        print(ColorString.dark_green( f"Useful files:         {self.useful_size.format(align=True)} | {self.useful_size.format(unit=SizeUnit.KIB)}"))
+        print(ColorString.green(      f"Required modules:     {self.required_modules_size.format(align=True)} | {self.required_modules_size.format(unit=SizeUnit.KIB)}"))
+        print(ColorString.red(        f"Not required modules: {self.not_required_modules_size.format(align=True)} | {self.not_required_modules_size.format(unit=SizeUnit.KIB)}"))
+        print(ColorString.dark_red(   f"Useless files:        {self.useless_size.format(align=True)} | {self.useless_size.format(unit=SizeUnit.KIB)}"))
+        print(ColorString.white(      f"Not handled files:    {self.not_handled_size.format(align=True)} | {self.not_handled_size.format(unit=SizeUnit.KIB)}"))
         # Don't print not found file size.
-        print(f"Unknown files:      {self.unknown_size.format(align=True)} | {self.unknown_size.format(unit=SizeUnit.KIB)}")
+        print(ColorString.purple(     f"Unknown files:        {self.unknown_size.format(align=True)} | {self.unknown_size.format(unit=SizeUnit.KIB)}"))
         print()
 
     

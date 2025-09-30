@@ -4,6 +4,7 @@ import shutil
 import sys
 from pathlib import Path
 
+import settings
 from epim.python_file import is_python_file
 from epim.python_module import PythonModule, get_module_full_name_from_path
 from epim.python_module_collection import PythonModuleCollection
@@ -75,6 +76,7 @@ def find_all_available_modules(
         # Glob the search path and use heuristics to detect all Python files.
         print(f"Adding modules from {search_path_str}")
         for object_path in search_path.rglob("*"):
+            #print(f"Checking path: {object_path}")
             if is_python_file(object_path, ignore_pycs=True):
                 if not object_path in all_modules:
                     python_module = PythonModule(object_path, None, search_paths)
@@ -147,6 +149,8 @@ def find_all_dependencies(
         # Convert pydeps result to a JSON dictionary.
         dep_graph_dict = json.loads(dep_graph.__json__())
 
+        #print(dep_graph_dict)
+
         # Clean up path so that it does not confuse the next entry point scan.
         if path_was_added:
             sys.path.remove(ep_dir_str)
@@ -165,7 +169,9 @@ def find_all_dependencies(
                 if dep_entry_path == ep_path_for_pydeps:
                     dep_entry_path = ep_path
                 
-                all_modules[dep_entry_path].importers.update(dep_entry["imported_by"])
+                new_importers = dep_entry["imported_by"]
+                    
+                all_modules[dep_entry_path].importers.update(new_importers)
                     
             else:
                 # There is a large amount of 

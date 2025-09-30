@@ -29,3 +29,7 @@ import sw_install_auth
 
 # cherrypy, as configured by dmif_rest.py:
 from cherrypy.wsgiserver.ssl_pyopenssl_sdr import pyOpenSSLAdapter
+
+# Archivebox commands
+import archivebox.cli.archivebox_init
+import archivebox.cli.archivebox_server

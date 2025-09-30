@@ -14,13 +14,13 @@ class FileObjectType(Enum):
     DIRECTORY = "DIRECTORY"
 
 class FileObjectStatus(Enum):
-    REQUIRED = "REQUIRED"           # File is present on target, and is used.
-    NOT_REQUIRED = "NOT_REQUIRED"   # File is present on target, but not used. Could be removed.
-    USELESS = "USELESS"             # File has been marked as useless due to type.
-    NOT_HANDLED = "NOT_HANDLED"     # We can't determine if this file is used or not, due to its type.
-    NOT_FOUND = "NOT_FOUND"         # File does not seem to be on the device.
-    DIRECTORY = "DIRECTORY"         # Directories are not handled, but need special arrangements.
-    UNKNOWN = "UNKNOWN"             # We don't know what to do with this file.
+    USEFUL = "USFL"                 # Always useful files.
+    REQUIRED_MODULE = " REQ"        # File is present on target, and is used.
+    NOT_REQUIRED_MODULE = "NREQ"    # File is present on target, but not used. Could be removed.
+    USELESS = "USLS"                # File has been marked as useless due to type.
+    NOT_HANDLED = "NHND"            # We can't determine if this file is used or not, due to its type.
+    DIRECTORY = " DIR"              # Directories are not handled, but need special arrangements.
+    UNKNOWN = "UNKN"                # We don't know what to do with this file.
 
 
 class FileObject(object):
@@ -39,12 +39,6 @@ class FileObject(object):
         else:
             assert False
 
-    @property
-    def not_handled(self):
-        if self.path.suffix in settings.NOT_HANDLED_FILE_TYPES:
-            return True
-        else:
-            return False
 
 #############
 ## METHODS ##
@@ -62,16 +56,16 @@ class FileObject(object):
 
         self.theoretical_size = TheoreticalSize(None)
         self.real_size = RealSize(None)
-        
+
         self.update_theoretical_size()
 
-        ''' TODO: setting more permanent flags like this could be useful,
-        rather than relying on file status alone. '''
         self.found_on_target = False
 
-        #TODO: use more
-        # The corresponding module (i.e., Python file) found on target
+        # The corresponding module (i.e., Python file) found on target.
         self.python_module = None
+
+        # The bytecode file that this file is a pycache of.
+        self.pycache_of = None
 
     def get_status(self):
         # Most important statuses returned first to give them priority.
@@ -80,29 +74,40 @@ class FileObject(object):
         if self.file_object_type == FileObjectType.DIRECTORY:
             return FileObjectStatus.DIRECTORY
 
-        # If file is not on device, nothing else matters.
-        if not self.found_on_target:
-            return FileObjectStatus.NOT_FOUND
-        
+        # If we are a pycache file, our status is our parent's status.
+        if self.pycache_of:
+            return self.pycache_of.get_status()
+
+        if self.is_useful():
+            return FileObjectStatus.USEFUL
+
         # If file is marked as useless, it takes priority.
         if self.is_useless():
             return FileObjectStatus.USELESS
 
+        # If file is not on device, nothing else matters.
+        #if not self.found_on_target:
+        #    return FileObjectStatus.NOT_FOUND
+
         # Python modules.
         if self.python_module:
             if self.python_module.required:
-                return FileObjectStatus.REQUIRED
+                return FileObjectStatus.REQUIRED_MODULE
             else:
-                return FileObjectStatus.NOT_REQUIRED
+                return FileObjectStatus.NOT_REQUIRED_MODULE
 
         # Not handled file types are the least important.
-        if self.not_handled:
+        if self.is_not_handled():
             return FileObjectStatus.NOT_HANDLED
 
         # Unknown if nothing else matches. This will include random text files, images, etc.
         return FileObjectStatus.UNKNOWN
 
     def get_string(self, file_object_size_type: FileObjectSizeType):
+        status = self.get_status()
+
+        # Get a string to show file object status.
+        status_string = status.value
 
         # Get the proper size to use.
         if file_object_size_type == FileObjectSizeType.REAL_SIZE:
@@ -114,7 +119,7 @@ class FileObject(object):
         size_string = size.format(align=True)
 
         # Set up the string-
-        string = f"{size_string} - {self.path}"
+        string = f"{status_string} - {size_string} - {self.path}"
 
         # Add importers if we have any.
         if self.python_module and len(self.python_module.importers) > 0:
@@ -122,19 +127,18 @@ class FileObject(object):
             string += f" - {importers_string}"
 
         # Color the string according to our status.
-        return self.__colorize_status_string(string)
-
+        return self.__colorize_status_string(status, string)
+    
+    def is_useful(self):
+        return self.__is_path_match(settings.USEFUL_PATH_MATCHES)
+    
     # Check if the file object has no actual or potential use in the installation.
     def is_useless(self):
-        for useless_path_match in settings.USELESS_PATH_MATCHES:
-            
-            # Check our path and all our parent directories.
-            all_paths = [self.path] + list(self.path.parents)
-            
-            for path in all_paths:
-                if path.match(useless_path_match):
-                    return True
-        return False
+        return self.__is_path_match(settings.USELESS_PATH_MATCHES)
+
+    # Check if the file object's usefulness cannot be determined.
+    def is_not_handled(self):
+        return self.__is_path_match(settings.NOT_HANDLED_PATH_MATCHES)
 
     @target_only
     def check_existence_on_target(self):
@@ -165,8 +169,23 @@ class FileObject(object):
             assert False
 
     @target_only
-    def update_real_size_on_target(self):
+    def update_data_on_target(self, file_objects):
+        # Measure real size on target
         self.real_size.measure(self.path)
+
+        # If we are a pycache file, link us to our script.
+        if self.file_object_type == FileObjectType.FILE and self.path.match("__pycache__/*"):
+            if self.path.suffix != ".pyc":
+                raise Exception(f"Unexpected file in pycache: {self.path}")
+
+            script_dir_path = self.path.parent.parent
+            script_filename = self.path.stem.split(".")[0] + ".py"
+
+            script_path = script_dir_path / script_filename
+            try:
+                self.pycache_of = file_objects[script_path]
+            except:
+                raise Exception(f"Unable to find script file {script_path} for pycache file: {self.path}")
 
     # Initially all data about this file is gathered from the Yocto work area.
     # With this function, the corresponding module from the target is linked
@@ -176,39 +195,18 @@ class FileObject(object):
 
 ## PRIVATE ##
 
-    # TODO: Use
-    # Highlight problems to the user.
-    def __get_problem_highlighting_string(self):
-        status = self.get_status()
-
-        if status == FileObjectStatus.REQUIRED:
-            return ""
-        elif status == FileObjectStatus.NOT_REQUIRED:
-            return "NOTE: "
-        elif status == FileObjectStatus.NOT_HANDLED:
-            return ""
-        elif status == FileObjectStatus.NOT_FOUND:
-            return "ERROR: "
-        elif status == FileObjectStatus.UNINITIALIZED:
-            #TODO: Not an error when ran locally to print Yocto packages.
-            return "ERROR: "
-        else:
-            assert False
-
     # Descriptive color for the file's status.
-    def __colorize_status_string(self, string):
-        status = self.get_status()
-
-        if status == FileObjectStatus.REQUIRED:
+    def __colorize_status_string(self, status, string):
+        if status == FileObjectStatus.USEFUL:
+            return ColorString.dark_green(string)
+        elif status == FileObjectStatus.REQUIRED_MODULE:
             return ColorString.green(string)
-        elif status == FileObjectStatus.NOT_REQUIRED:
+        elif status == FileObjectStatus.NOT_REQUIRED_MODULE:
             return ColorString.red(string)
         elif status == FileObjectStatus.USELESS:
             return ColorString.dark_red(string)
         elif status == FileObjectStatus.NOT_HANDLED:
             return ColorString.white(string)
-        elif status == FileObjectStatus.NOT_FOUND:
-            return ColorString.red(string)
         elif status == FileObjectStatus.DIRECTORY:
             return ColorString.gray(string)
         elif status == FileObjectStatus.UNKNOWN:
@@ -229,3 +227,15 @@ class FileObject(object):
             return FileObjectType.DIRECTORY
         else:
             return FileObjectType.FILE
+
+
+    def __is_path_match(self, path_matches):
+        for path_match in path_matches:
+            # Check our path and all our parent directories.
+            all_paths = [self.path] + list(self.path.parents)
+            
+            for path in all_paths:
+                if path.match(path_match):
+                    return True
+        return False
+

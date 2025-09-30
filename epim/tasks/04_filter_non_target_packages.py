@@ -1,12 +1,13 @@
 from epim.tasks.base.local_task import LocalTask
 from epim.util.logging import *
 
-##############
-## TASK 7 A ##
-##############
+############
+## TASK 4 ##
+############
+# TODO: Remove
 class FilterNonTargetPackages(LocalTask):
 
-    _previous_task_name = "CombineHostAndTargetData"
+    _previous_task_name = "CheckTargetFiles"
     visible = False
 
     def _run_locally(self, session):

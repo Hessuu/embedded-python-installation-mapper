@@ -28,19 +28,19 @@ YOCTO_TARGET_WORK_DIRS = {
     Path(YOCTO_ROOT_PATH / "build/tmp/work/cortexa72-cortexa53-xilinx-linux"),
 }
 
-# These Python files on the target are automatically considered required,
-# and therefore all their dependencies are also considered required.
+'''
+Python dependency scanning is performed for these files on the target, and them
+and their dependencies are marked as required.
+NOTE: Do not add any Python modules that are intended to be imported, as
+then their relative imports will not be detected. Add them to known_imports.py instead. '''
 ENTRY_POINT_PATHS_ON_TARGET = [
+    # A file where additional imports may be added.
+    Path("/home/root/embedded-python-installation-mapper/known_imports/known_imports.py"),
+
+    # Actual entry points
     Path("/usr/bin/archivebox"),
     Path("/usr/bin/yt-dlp"),
     
-    # The Archivebox commands that the current server configuration runs.
-    # These are here because Archivebox calls these dynamically, which we can't detect.
-    Path("/usr/lib/python3.12/site-packages/archivebox/cli/archivebox_init.py"),
-    Path("/usr/lib/python3.12/site-packages/archivebox/cli/archivebox_server.py"),
-    
-    # A file where additional imports may be added.
-    Path("/home/root/embedded-python-installation-mapper/known_imports.py"),
 ]
 
 # Additional paths on target to search Python modules from.
@@ -53,14 +53,24 @@ ADDITIONAL_PYTHON_SEARCH_PATHS_ON_TARGET = [
 PACKAGE_DIR_PATHS_ON_TARGET = [
 ]
 
-# We do not try to figure out if these file types are used or not.
-NOT_HANDLED_FILE_TYPES = [
+USEFUL_PATH_MATCHES = [
     # Python
-    ".pth",
+    "/usr/bin/python3*",
+    "/usr/lib/libpython*",
+]
+
+# We do not try to figure out if these file objects are used or not.
+# We assume they can be useful depending on use case.
+NOT_HANDLED_PATH_MATCHES = [
+    # Python
+    "*.pth",
 
     # Systemd
-    ".preset",
-    ".service",
+    "*.preset",
+    "*.service",
+    
+    # python3-pytz (timezone data)
+    "pytz/zoneinfo"
 ]
 
 # Files and directories that match any of these paths have no actual or potential use on the target.
@@ -74,6 +84,7 @@ USELESS_PATH_MATCHES = [
     # Cython
     "*.pyx",
     "*.pxd",
+    "*.pxi",
 
     # Metadata
     "*.dist-info",
@@ -90,6 +101,9 @@ USELESS_PATH_MATCHES = [
     "test_*",  # Watch out!
     "turtledemo",
 
+    # Tools
+    "fetch_macholib*",
+
     # Documentation
     "doc",
     "docs",
@@ -99,12 +113,13 @@ USELESS_PATH_MATCHES = [
     # Others
     "*.c",
     "*.cpp",
-    "*.h",
+    #"*.h", # python3-cffi uses these?
     "*.exe",
     "*.pyd",
 
     # Build artifacts
     "config-*-aarch64-linux-gnu", # Very platform-dependent
+    ".flake8",
     ".git",
     ".gitignore",
     ".gitlab-ci.yml",
@@ -113,8 +128,7 @@ USELESS_PATH_MATCHES = [
     "Makefile",
     "*.py-tpl",
     "requirements.txt",
-    "setup.cfg",
-    "setup.py",
+    "setup.*",
     ".travis.yml",
 ]
 

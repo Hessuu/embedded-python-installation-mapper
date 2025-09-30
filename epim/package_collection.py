@@ -20,7 +20,7 @@ class PackageCollection(collections.UserDict):
 
     def get_string(self):
         string = ""
-        for package in self.values():
+        for _, package in sorted(self.items()):
             string += "\n" + package.get_string()
         return string
 
@@ -45,54 +45,31 @@ class PackageCollection(collections.UserDict):
     def add_packages_on_target(self, package_dirs):        
         for package_dir in package_dirs:
             package = Package(package_dir.name, package_dir.name, package_dir, PackageType.TARGET_ONLY)
-            
+
             package.populate_file_objects()
-            
+
             if package.is_python_package:
                 self[package.path] = package
             else:
                 raise Exception(f"User-defined package on target at {package_dir} is not a valid Python package!")
     
+    # TODO: Remove
     @host_and_target        
     def remove_packages_not_found_on_target(self):
-        for package_path in list(self.keys()):
+        for package_path in sorted(list(self.keys())):
             package = self[package_path]
 
             package_status = package.get_status()
-            print(f"{package.name} {package_status}")
 
             if package_status == PackageStatus.NOT_ON_DEVICE:
-                print(f"    Filtering out package: {package.name}")
+                print(f"❌ Not found on target | {package.name}")
 
                 # Remove it from packages.
                 self.pop(package_path)
+            else:
+                print(f"✅ Found on target     | {package.name}")
 
     @target_only
-    def check_packages_on_target(self):
+    def check_existences_on_target(self):
         for package in self.values():
-            package.check_files_on_target()
-
-    @host_only
-    def combine_with_python_module_data(self, python_modules: PythonModuleCollection):
-        for python_module in python_modules.values():
-            module_found_from_packages = False
-
-            for package in self.values():
-
-                if python_module.path in package.file_objects:
-                    module_found_from_packages = True
-
-                    file_object = package.file_objects[python_module.path]
-
-                    file_object.link_python_module(python_module)
-
-            if not module_found_from_packages:
-                if python_module.is_built_in:
-                    continue
-                if python_module.is_entry_point:
-                    print(f"Entry point not found from packages, ignoring: {python_module.path}")
-                    continue
-
-                raise Exception(f"Module not found from packages: {python_module}")
-
-        # TODO: Check that all Python files in all packages have been handled in some way
+            package.check_existences_on_target()
