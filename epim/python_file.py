@@ -46,8 +46,6 @@ def get_file_object_content_type(path: Path):
 
 # Needed specifically for modules implemented as .so files or similar.
 def __is_importable_module(path: Path):
-    #from epim.util.color_string import ColorString
-
     """
     Performs a deep check to see if a file path is an importable Python module
     by inspecting the binary's symbol table for the PyInit function. """

@@ -41,7 +41,7 @@ class Application(object):
         return cls.__remote_root_path / cls.__SESSION_DIR_NAME
 
     @classmethod
-    def initialize(cls, location: Location):
+    def initialize(cls, location: Location, create_session_dir = True):
         # Location
         cls.__location = location
 
@@ -51,8 +51,9 @@ class Application(object):
             cls.__local_root_path = settings.LOCAL_ROOT_PATH
             cls.__remote_root_path = settings.REMOTE_ROOT_PATH
 
-            print(f"Creating sessions dir: {cls.local_session_dir_path}")
-            cls.local_session_dir_path.mkdir(parents=False, exist_ok=True)
+            if create_session_dir:
+                print(f"Creating sessions dir: {cls.local_session_dir_path}")
+                cls.local_session_dir_path.mkdir(parents=False, exist_ok=True)
 
         elif location == Location.TARGET:
             # Target is only aware of itself.
