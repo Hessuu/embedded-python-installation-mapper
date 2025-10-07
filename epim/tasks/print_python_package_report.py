@@ -4,7 +4,8 @@ from epim.util.logging import *
 class PrintPythonPackageReport(LocalTask):
 
     _previous_task_name = "CombineHostAndTargetData"
-    visible = True
+    _visible = True
+    _never_skip = True
 
     def _run_locally(self, session):
         print(f"## Printing Yocto package report... ##")

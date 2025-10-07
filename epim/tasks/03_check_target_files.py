@@ -7,7 +7,7 @@ from epim.util.logging import *
 class CheckTargetFiles(RemoteTask):
 
     _previous_task_name = "AddTargetPackages"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Checking Python files on target... ##")

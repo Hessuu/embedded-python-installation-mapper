@@ -7,7 +7,7 @@ from epim.util.logging import *
 class ConstructPythonInstallation(LocalTask):
 
     _previous_task_name = "CheckTargetFiles"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Constructing Python installation... ##")

@@ -7,7 +7,7 @@ class PythonInstallationReport:
     def __init__(self):
 
         # All file types in the installation
-        self.file_types_encountered = set()
+        self.file_suffixes_encountered = set()
 
         # All files
         self.total_size = RealSize(0)
@@ -16,8 +16,8 @@ class PythonInstallationReport:
         self.directories_size = RealSize(0)
 
         # By file type
-        self.py_files_size = RealSize(0)
-        self.pyc_files_size = RealSize(0)
+        self.python_source_files_size = RealSize(0)
+        self.python_bytecode_files_size = RealSize(0)
         self.so_files_size = RealSize(0)
         self.other_files_size = RealSize(0)
         
@@ -33,8 +33,9 @@ class PythonInstallationReport:
     def add_file_object_data(self, file_object):
         file_object_path = file_object.path
         file_object_size = file_object.real_size
-        file_object_type = "".join(file_object_path.suffixes) # Get the full type.
+        file_object_suffix = "".join(file_object_path.suffixes) # Get the full type.
         file_object_status = file_object.get_status()
+        file_object_content_type = file_object.file_object_content_type
 
         self.total_size += file_object_size
 
@@ -44,14 +45,14 @@ class PythonInstallationReport:
             self.directories_size += file_object_size
         else:
             # Only files have a meaningful type.
-            self.file_types_encountered.add(file_object_type)
+            self.file_suffixes_encountered.add(file_object_suffix)
 
-            # Add size to groups by type
-            if file_object_type == ".py":
-                self.py_files_size += file_object_size
-            elif ".pyc" in file_object_type:
-                self.pyc_files_size += file_object_size
-            elif ".so" in file_object_type:
+            # Add size to groups by type.
+            if file_object_content_type == FileObjectContentType.PYTHON_SCRIPT:
+                self.python_source_files_size += file_object_size
+            elif file_object_content_type == FileObjectContentType.PYTHON_BYTECODE:
+                self.python_bytecode_files_size += file_object_size
+            elif ".so" in file_object_suffix:
                 self.so_files_size += file_object_size
             else:
                 self.other_files_size += file_object_size
@@ -59,8 +60,8 @@ class PythonInstallationReport:
         # Check for by type size errors.        
         assert(self.total_size ==
             self.directories_size +
-            self.py_files_size +
-            self.pyc_files_size +
+            self.python_source_files_size +
+            self.python_bytecode_files_size +
             self.so_files_size + 
             self.other_files_size
         )
@@ -111,11 +112,11 @@ class PythonInstallationReport:
         print(f"Total:       {self.total_size.format(align=True)} | {self.total_size.format(unit=SizeUnit.KIB)}")
         print()
         print(f"# Size by type #")
-        print(f".py files:   {self.py_files_size.format(align=True)} | {self.py_files_size.format(unit=SizeUnit.KIB)}")
-        print(f".pyc files:  {self.pyc_files_size.format(align=True)} | {self.pyc_files_size.format(unit=SizeUnit.KIB)}")
-        print(f".so files:   {self.so_files_size.format(align=True)} | {self.so_files_size.format(unit=SizeUnit.KIB)}")
-        print(f"Directories: {self.directories_size.format(align=True)} | {self.directories_size.format(unit=SizeUnit.KIB)}")
-        print(f"Other files: {self.other_files_size.format(align=True)} | {self.other_files_size.format(unit=SizeUnit.KIB)}")
+        print(f"Source files:    {self.python_source_files_size.format(align=True)} | {self.python_source_files_size.format(unit=SizeUnit.KIB)}")
+        print(f"Bytecode files:  {self.python_bytecode_files_size.format(align=True)} | {self.python_bytecode_files_size.format(unit=SizeUnit.KIB)}")
+        print(f".so files:       {self.so_files_size.format(align=True)} | {self.so_files_size.format(unit=SizeUnit.KIB)}")
+        print(f"Directories:     {self.directories_size.format(align=True)} | {self.directories_size.format(unit=SizeUnit.KIB)}")
+        print(f"Other files:     {self.other_files_size.format(align=True)} | {self.other_files_size.format(unit=SizeUnit.KIB)}")
         print()
         print()
         print(f"# Size by status #")
@@ -135,9 +136,9 @@ class PythonInstallationReport:
         _MAX_ROW_LENGTH = 100
         string = ""
         
-        for i, file_type_str in enumerate(sorted(self.file_types_encountered)):
+        for i, file_type_str in enumerate(sorted(self.file_suffixes_encountered)):
             string += "'" + file_type_str + "'" + " "
             
-            if len(string) > _MAX_ROW_LENGTH or i + 1 >= len(self.file_types_encountered):
+            if len(string) > _MAX_ROW_LENGTH or i + 1 >= len(self.file_suffixes_encountered):
                 print(string)
                 string = ""

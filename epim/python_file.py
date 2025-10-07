@@ -4,14 +4,18 @@ import subprocess
 from elftools.common.exceptions import ELFError
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
+from enum import Enum
 from pathlib import Path
 
 from epim.util.logging import *
 
-# TODO: These are very slow, measure which is faster.
+class FileObjectContentType(Enum):
+    PYTHON_SCRIPT = "SCRPT"
+    PYTHON_BYTECODE = "BYTEC"
+    OTHER = "OTHER"
 
 # Needed specifically for Python files lacking file extensions.
-def __is_native_python_file(path: Path):
+def get_file_object_content_type(path: Path):
     command = ["file", str(path)]
     
     command_result = subprocess.run(
@@ -22,13 +26,23 @@ def __is_native_python_file(path: Path):
     )
 
     if "Python script" in command_result.stdout:
-        return True
+        # We can disregard some false-positives
+        if (path.match("README*") or
+            path.match("METADATA") or
+            path.match("*.pyi") or
+            path.match("*.tmpl") or
+            path.match("*.rst") or
+            path.match("*.py-tpl")
+        ):
+            return FileObjectContentType.OTHER
+        else:
+            return FileObjectContentType.PYTHON_SCRIPT
 
     elif "Byte-compiled Python module" in command_result.stdout:
-        return True
+        return FileObjectContentType.PYTHON_BYTECODE
 
     else:
-        return False
+        return FileObjectContentType.OTHER
 
 # Needed specifically for modules implemented as .so files or similar.
 def __is_importable_module(path: Path):
@@ -79,7 +93,7 @@ def __is_importable_module(path: Path):
 
     return True
 
-def is_python_file(path: Path, ignore_pycs: bool):
+def is_python_file(path: Path, ignore_pycache: bool):
     if path.is_file():
 
         # Try to rule out files with fast ways to avoid the slow ways.
@@ -87,8 +101,8 @@ def is_python_file(path: Path, ignore_pycs: bool):
         if path.suffix == ".py":
             return True
         elif path.suffix == ".pyc":
-            # Ignore pycs. In module terms they are duplicates of .py-files.
-            if ignore_pycs:
+            # Ignore pycache files if requested. In module terms they are duplicates of .py-files.
+            if ignore_pycache and path.match("__pycache__/*"):
                 return False
             else:
                 return True
@@ -96,6 +110,7 @@ def is_python_file(path: Path, ignore_pycs: bool):
         # Slow ways.
         if __is_importable_module(path):
             return True
-        if __is_native_python_file(path):
+        if get_file_object_content_type(path) != FileObjectContentType.OTHER:
             return True
+
     return False

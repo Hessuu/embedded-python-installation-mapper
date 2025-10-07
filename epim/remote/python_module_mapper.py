@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import settings
-from epim.python_file import is_python_file
+from epim.python_file import *
 from epim.python_module import PythonModule, get_module_full_name_from_path
 from epim.python_module_collection import PythonModuleCollection
 from epim.util.logging import *
@@ -77,7 +77,7 @@ def find_all_available_modules(
         print(f"Adding modules from {search_path_str}")
         for object_path in search_path.rglob("*"):
             #print(f"Checking path: {object_path}")
-            if is_python_file(object_path, ignore_pycs=True):
+            if is_python_file(object_path, ignore_pycache=True):
                 if not object_path in all_modules:
                     python_module = PythonModule(object_path, None, search_paths)
                     all_modules[object_path] = python_module
@@ -99,11 +99,21 @@ def find_all_dependencies(
         
     # Run dependency scan for each entry point.
     for ep_path in entry_point_paths:     
-        
-        # For extensionless Python files, we need to create a temporary copy with .py extension.
-        # Pydeps insists on having an extension.
+        '''
+        For extensionless Python files like app launchers, we need to create
+        a temporary copy with a Python extension. Pydeps insists on
+        having an extension. '''
         if ep_path.suffix == "":
-            ep_path_for_pydeps = ep_path.with_suffix(".py")
+            # Added extension depends on file type. 
+            python_file_type = get_file_object_content_type(ep_path)
+            
+            if python_file_type == FileObjectContentType.PYTHON_SCRIPT:
+                ep_path_for_pydeps = ep_path.with_suffix(".py")
+            elif python_file_type == FileObjectContentType.PYTHON_BYTECODE:
+                ep_path_for_pydeps = ep_path.with_suffix(".pyc")
+            else:
+                raise Exception(f"Entry point is not a Python file: {ep_path}")
+
             shutil.copy(ep_path, ep_path_for_pydeps)
             ep_copied = True
         else:

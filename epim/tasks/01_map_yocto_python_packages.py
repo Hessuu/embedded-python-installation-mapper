@@ -8,7 +8,7 @@ from epim.util.logging import *
 class MapYoctoPythonPackages(LocalTask):
 
     _previous_task_name = None
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Mapping Yocto Python packages... ##")

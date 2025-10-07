@@ -10,7 +10,7 @@ from epim.util.logging import *
 class MapTargetPythonInstallation(RemoteTask):
 
     _previous_task_name = "ConstructPythonInstallation"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Mapping target Python installation... ##")

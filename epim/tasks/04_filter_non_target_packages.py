@@ -8,7 +8,7 @@ from epim.util.logging import *
 class FilterNonTargetPackages(LocalTask):
 
     _previous_task_name = "CheckTargetFiles"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Filtering out non-target packages... ##")

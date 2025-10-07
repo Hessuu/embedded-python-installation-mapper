@@ -1,10 +1,11 @@
+'''
 from epim.tasks.base.local_task import LocalTask
 from epim.util.logging import *
 
 class PrintUnimportedPackages(LocalTask):
 
     _previous_task_name = "CombineHostAndTargetData"
-    visible = True
+    _visible = True
 
     def _run_locally(self, session):
         from common.package import PackageStatus
@@ -18,3 +19,4 @@ class PrintUnimportedPackages(LocalTask):
 
         print(f"## Printed unimported packages. ##")
         print()
+'''

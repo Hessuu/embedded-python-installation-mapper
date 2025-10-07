@@ -33,9 +33,9 @@ class FileObject(object):
     @property
     def is_python_file(self):
         if Application.location == Location.HOST:
-            return is_python_file(self.path_on_host, ignore_pycs=False)
+            return is_python_file(self.path_on_host, ignore_pycache=False)
         elif Application.location == Location.TARGET:
-            return is_python_file(self.path, ignore_pycs=False)
+            return is_python_file(self.path, ignore_pycache=False)
         else:
             assert False
 
@@ -60,6 +60,8 @@ class FileObject(object):
         self.update_theoretical_size()
 
         self.found_on_target = False
+        
+        self.file_object_content_type = None
 
         # The corresponding module (i.e., Python file) found on target.
         self.python_module = None
@@ -108,6 +110,9 @@ class FileObject(object):
 
         # Get a string to show file object status.
         status_string = status.value
+        
+        # Get a string to show file content type.
+        content_type_string = self.file_object_content_type.value
 
         # Get the proper size to use.
         if file_object_size_type == FileObjectSizeType.REAL_SIZE:
@@ -119,7 +124,7 @@ class FileObject(object):
         size_string = size.format(align=True)
 
         # Set up the string-
-        string = f"{status_string} - {size_string} - {self.path}"
+        string = f"{status_string} - {content_type_string} - {size_string} - {self.path}"
 
         # Add importers if we have any.
         if self.python_module and len(self.python_module.importers) > 0:
@@ -186,6 +191,12 @@ class FileObject(object):
                 self.pycache_of = file_objects[script_path]
             except:
                 raise Exception(f"Unable to find script file {script_path} for pycache file: {self.path}")
+
+        # Get our content type
+        if self.file_object_type == FileObjectType.FILE:
+            self.file_object_content_type = get_file_object_content_type(self.path)
+        else:
+            self.file_object_content_type = FileObjectContentType.OTHER
 
     # Initially all data about this file is gathered from the Yocto work area.
     # With this function, the corresponding module from the target is linked

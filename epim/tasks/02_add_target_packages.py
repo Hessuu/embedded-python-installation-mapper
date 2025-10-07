@@ -8,7 +8,7 @@ from epim.util.logging import *
 class AddTargetPackages(RemoteTask):
 
     _previous_task_name = "MapYoctoPythonPackages"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Adding packages from target... ##")

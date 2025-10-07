@@ -151,4 +151,6 @@ PYTHON_INSTALLATION_MANIFEST_FILE_OBJECTS_TO_IGNORE = [
     Path("/usr/include"),
     Path("/usr/lib"),
     Path("/usr/lib/systemd"),
+    Path("/usr/lib/systemd/system"),
+    Path("/usr/lib/systemd/system-preset"),
 ]

@@ -45,11 +45,16 @@ class LocalTask(object):
     def visible(cls) -> bool:
         assert cls._visible != None
         return cls._visible
+    
+    @classproperty
+    def never_skip(cls) -> bool:
+        return cls._never_skip
 
 ## PROTECTED ##
     _previous_task_name = None
     _session = None
     _visible = None
+    _never_skip = False
 
 #############
 ## METHODS ##

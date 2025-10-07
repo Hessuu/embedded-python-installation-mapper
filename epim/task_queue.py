@@ -30,7 +30,7 @@ class TaskQueue(LifoQueue):
             current_task = self.get()
 
             # Current task should not be skipped.
-            if current_task != target_task:
+            if current_task != target_task or not current_task.never_skip:
                 if Session.exists(current_task.name):
                     print(f"#### Skipping already done task: {current_task.cli_name} ####")
                     print()

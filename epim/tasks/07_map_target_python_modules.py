@@ -8,7 +8,7 @@ from epim.util.logging import *
 class MapTargetPythonModules(RemoteTask):
 
     _previous_task_name = "MapTargetPythonInstallation"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         from epim.remote import python_module_mapper 

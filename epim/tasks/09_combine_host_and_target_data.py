@@ -7,7 +7,7 @@ from epim.util.logging import *
 class CombineHostAndTargetData(LocalTask):
 
     _previous_task_name = "MapTargetPythonDependencies"
-    visible = False
+    _visible = False
 
     def _run_locally(self, session):
         print(f"## Combining target module and Yocto package data... ##")
